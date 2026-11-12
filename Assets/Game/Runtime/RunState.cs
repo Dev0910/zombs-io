@@ -321,35 +321,57 @@ namespace Zombs
 
         public float FuelRate(Structure building) => building.Kind == BuildingKind.Miner ? Mathf.Max(0, Catalog.minerFuelPerSecond) : 1;
 
-        public bool Refuel(Structure building, ResourceKind kind)
+        internal float FuelValue(ResourceKind kind) => kind switch
         {
-            if (!InReach(building) || building.Kind is not (BuildingKind.Generator or BuildingKind.Miner)) return false;
-            float perUnit = kind == ResourceKind.Wood ? Catalog.woodFuelSeconds :
-                kind == ResourceKind.Coal ? Catalog.coalFuelSeconds : 0;
-            if (perUnit <= 0) return false;
+            ResourceKind.Wood => Catalog.woodFuelSeconds,
+            ResourceKind.Coal => Catalog.coalFuelSeconds,
+            _ => 0
+        };
+
+        internal int FuelLoad(Structure building, ResourceKind kind)
+        {
+            if (!InReach(building) || building.Kind is not (BuildingKind.Generator or BuildingKind.Miner)) return 0;
+            float perUnit = FuelValue(kind);
+            if (perUnit <= 0) return 0;
             float available = kind == ResourceKind.Wood ? Resources.wood : Resources.coal;
             float room = FuelCapacity(building) - building.Fuel;
-            int amount = Mathf.Min(5, Mathf.FloorToInt(available), Mathf.FloorToInt((room + .001f) / perUnit));
+            return Mathf.Max(0, Mathf.Min(5, Mathf.FloorToInt(available), Mathf.FloorToInt((room + .001f) / perUnit)));
+        }
+
+        public bool Refuel(Structure building, ResourceKind kind)
+        {
+            int amount = FuelLoad(building, kind);
             if (amount < 1) return false;
             Resources -= Price.Gathered(kind, amount);
-            building.Fuel += amount * perUnit;
+            building.Fuel += amount * FuelValue(kind);
             return true;
         }
 
+        internal int ProductionBatchSize(Structure building) => PlanProduction(building, out _);
+
         public int QueueProduction(Structure building)
         {
+            int count = PlanProduction(building, out Price remaining);
+            if (count == 0) return 0;
+            Resources = remaining;
+            building.Queued += count;
+            return count;
+        }
+
+        private int PlanProduction(Structure building, out Price remaining)
+        {
+            remaining = Resources;
             if (!InReach(building)) return 0;
             var recipe = Catalog.RecipeFor(building.Kind);
             if (recipe == null) return 0;
             int room = Mathf.FloorToInt(building.Data.Value(building.Data.capacity, building.Tier)
                 - building.Stored - building.Queued);
             int count = 0;
-            while (count < Mathf.Min(5, room) && Resources.Covers(recipe.input))
+            while (count < Mathf.Min(5, room) && remaining.Covers(recipe.input))
             {
-                Resources -= recipe.input;
+                remaining -= recipe.input;
                 count++;
             }
-            building.Queued += count;
             return count;
         }
 
@@ -438,34 +460,40 @@ namespace Zombs
             return true;
         }
 
+        internal bool CanHealPlayer => !Dead && !Defeated && Health < Catalog.playerHealth && potionCooldown <= 0 &&
+            Resources.Covers(Catalog.Item(ItemKind.HealthPotion).prices[0]);
+
         public bool HealPlayer()
         {
-            var price = Catalog.Item(ItemKind.HealthPotion).prices[0];
-            if (Dead || Defeated || Health >= Catalog.playerHealth || potionCooldown > 0 || !Resources.Covers(price)) return false;
-            Resources -= price;
+            if (!CanHealPlayer) return false;
+            Resources -= Catalog.Item(ItemKind.HealthPotion).prices[0];
             Health = Catalog.playerHealth;
             potionCooldown = Catalog.playerPotionCooldown;
             Emit(EffectKind.Impact, Player, "Healed");
             return true;
         }
 
+        internal bool CanHealPet => !Dead && !Defeated && ActivePet.HasValue && PetHealth > 0 && PetHealth < PetMaxHealth &&
+            petPotionCooldown <= 0 && Resources.Covers(Catalog.Item(ItemKind.PetPotion).prices[0]);
+
         public bool HealPet()
         {
-            var price = Catalog.Item(ItemKind.PetPotion).prices[0];
-            if (Dead || Defeated || ActivePet == null || PetHealth <= 0 || PetHealth >= PetMaxHealth ||
-                petPotionCooldown > 0 || !Resources.Covers(price)) return false;
-            Resources -= price;
+            if (!CanHealPet) return false;
+            Resources -= Catalog.Item(ItemKind.PetPotion).prices[0];
             PetHealth = PetMaxHealth;
             petPotionCooldown = Catalog.petPotionCooldown;
             return true;
         }
 
+        internal int PetEvolutionPrice => 100 * (1 + PetEvolution / 2);
+        internal int PetEvolutionLevel => 3 + PetEvolution * 3;
+        internal bool CanEvolvePet => !Dead && !Defeated && ActivePet.HasValue && PetHealth > 0 && PetEvolution < 3 &&
+            PetLevel >= PetEvolutionLevel && Resources.tokens >= PetEvolutionPrice;
+
         public bool EvolvePet()
         {
-            int cost = 100 * (1 + PetEvolution / 2);
-            if (Dead || Defeated || ActivePet == null || PetHealth <= 0 || PetEvolution >= 3 ||
-                PetLevel < 3 + PetEvolution * 3 || Resources.tokens < cost) return false;
-            Resources -= new Price(tokens: cost);
+            if (!CanEvolvePet) return false;
+            Resources -= new Price(tokens: PetEvolutionPrice);
             PetEvolution++;
             PetHealth = PetMaxHealth;
             Emit(EffectKind.Upgraded, PetPosition);

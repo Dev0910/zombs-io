@@ -1,6 +1,7 @@
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
 using System;
 using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -10,17 +11,21 @@ namespace Zombs
     {
         private enum Checkpoint
         {
-            Title, Preview, Wood, ToStone, Stone, Build, FirstNight, ToIron, Iron, Return,
-            Smelt, Assemble, Upgrade, Miner, SecondNight, Outage, Refill, BossDefense, Finished
+            Title, TitleSettings, BlockedPreview, Preview, Wood, ToStone, Stone, Build, FirstNight, ToIron, Iron, Return,
+            Smelt, Assemble, Upgrade, Miner, SecondNight, Outage, Refill, BossDefense, ReviewPanels, ReviewStructures, ReviewCrowd, ReviewLoss, Finished
         }
 
         private sealed class Verification
         {
             public string Directory;
-            public float Speed, StageAge, ServiceClock;
+            public float Speed, BaseSpeed, StageAge, ServiceClock, CaptureClock;
+            public int MotionFrames;
+            public readonly List<float> FrameTimes = new();
+            public readonly List<float> CapturingFrameTimes = new();
+            public GameCatalog ArtCatalog;
             public Checkpoint Stage;
             public int Waypoint;
-            public bool Captured, PoisonSeen, FirstBoss;
+            public bool Captured, PoisonSeen, FirstBoss, ArtReview, ArtMotion, MotionLogged, ActiveNightCaptured;
         }
 
         private Verification verification;
@@ -37,9 +42,13 @@ namespace Zombs
             var output = Path.GetFullPath(args[index + 1]);
             Directory.CreateDirectory(output);
             bool firstBoss = args.Contains("-zombs-first-boss");
+            float speed = args.Contains("-zombs-fast") || firstBoss ? 20 : 1;
+            bool artMotion = args.Contains("-zombs-art-motion");
+            if (artMotion) Directory.CreateDirectory(Path.Combine(output, "motion"));
             verification = new Verification
             {
-                Directory = output, Speed = args.Contains("-zombs-fast") || firstBoss ? 20 : 1, FirstBoss = firstBoss
+                Directory = output, Speed = speed, BaseSpeed = speed, FirstBoss = firstBoss,
+                ArtReview = args.Contains("-zombs-art-review") || artMotion, ArtMotion = artMotion
             };
             VerificationLog($"Started packaged playthrough at {verification.Speed:0}x.");
         }
@@ -53,7 +62,7 @@ namespace Zombs
             Vector2 move = Vector2.zero;
             bool attack = false;
             if (verification.Stage != Checkpoint.Finished &&
-                (run.Defeated || run.Dead ||
+                (verification.Stage != Checkpoint.ReviewLoss && (run.Defeated || run.Dead) ||
                  verification.Stage != Checkpoint.BossDefense && verification.StageAge * verification.Speed > 310 ||
                  verification.Stage == Checkpoint.BossDefense && verification.StageAge > 250))
                 FinishVerification(false, $"Stopped at {verification.Stage}, player {run.Player}, wave {run.Wave}, health {run.Health:0}, fuel {run.Generator?.Fuel:0}.");
@@ -62,12 +71,22 @@ namespace Zombs
             {
                 case Checkpoint.Title:
                     if (!CaptureAfterDelay(.7f, "01-title")) return true;
-                    intro = false;
-                    profile.nickname = "Player";
-                    Attach(new RunState(catalog, 5238));
-                    SelectBuild(BuildingKind.Generator);
+                    if (verification.ArtReview)
+                    {
+                        settings = true;
+                        AdvanceVerification(Checkpoint.TitleSettings, "Opened title settings.");
+                    }
+                    else StartVerificationPreview();
+                    return true;
+                case Checkpoint.TitleSettings:
+                    if (!CaptureAfterDelay(.55f, "01b-title-settings")) return true;
+                    settings = false;
+                    StartVerificationPreview();
+                    return true;
+                case Checkpoint.BlockedPreview:
+                    if (!CaptureAfterDelay(.55f, "02b-blocked-placement")) return true;
                     cursor = Site;
-                    AdvanceVerification(Checkpoint.Preview, "New run, seed 5238.");
+                    AdvanceVerification(Checkpoint.Preview, "Checked a blocked placement over the player.");
                     return true;
                 case Checkpoint.Preview:
                     if (!CaptureAfterDelay(.7f, "02-generator-preview")) return true;
@@ -109,6 +128,16 @@ namespace Zombs
                     AdvanceVerification(Checkpoint.FirstNight, $"Built four towers and refueled, with {run.Generator.Fuel:0}s fuel before night.");
                     break;
                 case Checkpoint.FirstNight:
+                    if (verification.ArtMotion && run.Night)
+                    {
+                        elapsed = RecordFirstNight(frame);
+                    }
+                    if (verification.ArtReview && !verification.ActiveNightCaptured && run.Night && run.PhaseTime > 9 &&
+                        run.Enemies.Count(enemy => enemy.Health > 0 && (enemy.Position - run.Player).sqrMagnitude < 210) >= 2)
+                    {
+                        verification.ActiveNightCaptured = true;
+                        SaveVerificationFrame("04b-active-wave");
+                    }
                     if (!verification.Captured && run.Enemies.Any(enemy =>
                         enemy.Health > 0 && Mathf.Abs(enemy.Position.y - run.Player.y) < 9 &&
                         Mathf.Abs(enemy.Position.x - run.Player.x) < 13))
@@ -161,6 +190,11 @@ namespace Zombs
                     }
                     run.Collect(selected);
                     run.QueueProduction(selected);
+                    if (verification.ArtReview && !verification.Captured && selected.Queued > 0 && run.Resources.plate >= 1)
+                    {
+                        verification.Captured = true;
+                        SaveVerificationFrame("06b-smelter");
+                    }
                     if (run.Resources.plate >= 12)
                     {
                         run.Place(BuildingKind.Assembler, new Vector2(-1, -4), 0, out _);
@@ -243,6 +277,7 @@ namespace Zombs
                     else if (run.Breath >= catalog.breathSeconds)
                     {
                         if (verification.FirstBoss) SetUpBossVerification();
+                        else if (verification.ArtReview) StartArtPanels();
                         else FinishVerification(true, "Gathered and defended twice, processed parts, expanded oxygen, mined automatically, and recovered from outage.");
                     }
                     break;
@@ -253,14 +288,34 @@ namespace Zombs
                         VerificationLog("Switched to normal speed on the day before the first boss.");
                     }
                     if (!verification.Captured && run.Enemies.Any(enemy =>
-                        enemy.Boss && enemy.Health > 0 && (enemy.Position - run.Player).sqrMagnitude < 10 * 10))
+                        enemy.Boss && enemy.Health > 0 && (enemy.Position - run.Player).sqrMagnitude < 7.5f * 7.5f))
                     {
                         verification.Captured = true;
                         SaveVerificationFrame("10-first-boss");
                     }
                     if (run.Wave == catalog.firstBossWave && !run.Night)
-                        FinishVerification(run.Resources.tokens >= catalog.bossTokens,
-                            $"Finished the first boss night with {run.Resources.tokens} boss tokens and score {run.Score}.");
+                    {
+                        bool passed = run.Resources.tokens >= catalog.bossTokens;
+                        string message = $"Finished the first boss night with {run.Resources.tokens} boss tokens and score {run.Score}.";
+                        if (passed && verification.ArtReview)
+                        {
+                            VerificationLog(message);
+                            StartArtPanels();
+                        }
+                        else FinishVerification(passed, message);
+                    }
+                    break;
+                case Checkpoint.ReviewPanels:
+                    DrawArtReviewSamples();
+                    return true;
+                case Checkpoint.ReviewStructures:
+                    ReviewArtStructures();
+                    return true;
+                case Checkpoint.ReviewCrowd:
+                    if (CheckArtCrowd()) return true;
+                    break;
+                case Checkpoint.ReviewLoss:
+                    if (CheckArtLoss()) return true;
                     break;
                 case Checkpoint.Finished:
                     if (verification.StageAge > 1) Application.Quit();
@@ -271,6 +326,190 @@ namespace Zombs
                 StepGame(elapsed, move, attack);
                 ServiceVerificationBase(elapsed);
             }
+            return true;
+        }
+
+        private void StartVerificationPreview()
+        {
+            intro = false;
+            profile.nickname = "Player";
+            Attach(new RunState(catalog, 5238));
+            SelectBuild(BuildingKind.Generator);
+            cursor = verification.ArtReview ? run.Player : Site;
+            AdvanceVerification(verification.ArtReview ? Checkpoint.BlockedPreview : Checkpoint.Preview, "New run, seed 5238.");
+        }
+
+        private float RecordFirstNight(float frame)
+        {
+            if (run.PhaseTime < 10)
+            {
+                verification.Speed = 1;
+                if (run.PhaseTime >= 1.5f && run.PhaseTime < 3.8f)
+                    verification.FrameTimes.Add(Time.unscaledDeltaTime * 1000);
+                if (run.PhaseTime >= 4 && run.PhaseTime < 9)
+                {
+                    verification.CapturingFrameTimes.Add(Time.unscaledDeltaTime * 1000);
+                    verification.CaptureClock += frame;
+                    if (verification.CaptureClock >= 1f / 12f)
+                    {
+                        verification.CaptureClock -= 1f / 12f;
+                        string filename = $"motion/frame-{verification.MotionFrames++:D3}";
+                        SaveVerificationFrame(filename);
+                    }
+                }
+                return frame;
+            }
+            if (!verification.MotionLogged && verification.FrameTimes.Count > 0)
+            {
+                verification.MotionLogged = true;
+                verification.FrameTimes.Sort();
+                verification.CapturingFrameTimes.Sort();
+                float p95 = verification.FrameTimes[(verification.FrameTimes.Count - 1) * 95 / 100];
+                float captureP95 = verification.CapturingFrameTimes[(verification.CapturingFrameTimes.Count - 1) * 95 / 100];
+                VerificationLog($"Normal-speed wave motion, {verification.MotionFrames} captures. Frame time p95 {p95:0.0} ms without PNG capture, {captureP95:0.0} ms during capture.");
+            }
+            verification.Speed = verification.BaseSpeed;
+            return frame * verification.Speed;
+        }
+
+        private void StartArtPanels()
+        {
+            selected = null;
+            notice = null;
+            verification.Speed = 1;
+            AdvanceVerification(Checkpoint.ReviewPanels, "Opening and fuel recovery passed. Reviewing settings, all shop tabs, and loss states.");
+        }
+
+        private void DrawArtReviewSamples()
+        {
+            int index = verification.Waypoint;
+            if (index <= TabNames.Length)
+            {
+                settings = index == 0;
+                shop = index > 0;
+                if (shop)
+                {
+                    shopTab = index - 1;
+                    if (shopTab == 3 && !run.ActivePet.HasValue) run.Buy(ItemKind.Carl);
+                }
+                string name = index == 0 ? "11-paused" : $"12-{shopTab + 1}-{TabNames[shopTab].ToLowerInvariant()}";
+                if (!CaptureAfterDelay(.43f, name)) return;
+                verification.Waypoint++;
+                verification.StageAge = 0;
+                verification.Captured = false;
+                return;
+            }
+
+            shop = settings = false;
+            selected = run.Buildings.FirstOrDefault(building => SpriteArt.IsTower(building.Kind));
+            if (!CaptureAfterDelay(.43f, "13-tower-inspector")) return;
+
+            SetUpArtStructures();
+        }
+
+        private void SetUpArtStructures()
+        {
+            verification.ArtCatalog = Instantiate(catalog);
+            verification.ArtCatalog.daySeconds = 12;
+            verification.ArtCatalog.firstWaveCount = 30;
+            verification.ArtCatalog.spawnInterval = .11f;
+            Attach(new RunState(verification.ArtCatalog, 5238, new Price(wood: 400, stone: 400, coal: 30, plate: 20, parts: 30)));
+            if (!run.Place(BuildingKind.Generator, Site, 0, out _))
+            {
+                FinishVerification(false, "Could not place the generator for structure review.");
+                return;
+            }
+            run.Upgrade(run.Generator, false);
+            var layout = new (BuildingKind kind, Vector2 position)[]
+            {
+                (BuildingKind.Wall, new Vector2(-7, 5)), (BuildingKind.Door, new Vector2(-6, 5)),
+                (BuildingKind.SlowTrap, new Vector2(-5, 5)), (BuildingKind.Arrow, new Vector2(-7, 2)),
+                (BuildingKind.Cannon, new Vector2(-4, 2)), (BuildingKind.Melee, new Vector2(-7, -1)),
+                (BuildingKind.Bomb, new Vector2(-7, -4)), (BuildingKind.Mage, new Vector2(-4, -4)),
+                (BuildingKind.Smelter, new Vector2(-1, -2)), (BuildingKind.Assembler, new Vector2(4, 4)),
+                (BuildingKind.Miner, new Vector2(1, 3))
+            };
+            foreach (var (kind, position) in layout)
+            {
+                if (run.Place(kind, position, 0, out var result)) continue;
+                FinishVerification(false, $"Structure review placement failed for {kind}: {result}.");
+                return;
+            }
+            run.Buy(ItemKind.Carl);
+            run.Buy(ItemKind.Bow);
+            run.Equip(ItemKind.Bow);
+            cursor = new Vector2(6, -3);
+            SettleCompanion();
+            AdvanceVerification(Checkpoint.ReviewStructures, "Placed every building type for the art review.");
+        }
+
+        private void ReviewArtStructures()
+        {
+            if (verification.Waypoint == 0)
+            {
+                if (!CaptureAfterDelay(.43f, "13b-structure-gallery")) return;
+                run.Buy(ItemKind.Woody);
+                run.Buy(ItemKind.Hat);
+                SettleCompanion();
+                verification.Waypoint = 1;
+                verification.StageAge = 0;
+                verification.Captured = false;
+                return;
+            }
+            if (!CaptureAfterDelay(.43f, "13c-companion-and-hat")) return;
+            verification.Speed = 20;
+            AdvanceVerification(Checkpoint.ReviewCrowd, "Checking a dense first wave with shortened spawn intervals in the review fixture.");
+        }
+
+        private void SettleCompanion()
+        {
+            for (int step = 0; step < 12; step++) run.Step(Vector2.zero, cursor, false);
+        }
+
+        private bool CheckArtCrowd()
+        {
+            if (run.Night) verification.Speed = 1;
+            if (!run.Night || run.PhaseTime < 5) return false;
+            if (!verification.Captured)
+            {
+                int enemies = run.Enemies.Count(enemy => enemy.Health > 0 && (enemy.Position - run.Player).sqrMagnitude < 210);
+                if (enemies < 10 && run.PhaseTime < 7) return false;
+                VerificationLog($"Dense-wave capture at normal speed with {enemies} live enemies within 14.5 world units.");
+                SaveVerificationFrame("13d-dense-wave");
+                verification.Captured = true;
+                return true;
+            }
+
+            Attach(new RunState(catalog, 5238));
+            Destroy(verification.ArtCatalog);
+            verification.ArtCatalog = null;
+            if (!run.Place(BuildingKind.Generator, Site, 0, out _))
+            {
+                FinishVerification(false, "Could not set up loss review.");
+                return true;
+            }
+            run.Generator.Fuel = 0;
+            verification.Speed = 20;
+            AdvanceVerification(Checkpoint.ReviewLoss, "Testing player death and generator destruction through the simulation.");
+            return true;
+        }
+
+        private bool CheckArtLoss()
+        {
+            if (run.Defeated)
+            {
+                if (!CaptureAfterDelay(.38f, "15-generator-destroyed")) return true;
+                RestartAfterLoss();
+                FinishVerification(!run.Defeated && !run.Dead, "Reviewed title and pause settings, all shop tabs, all structures, companions, both loss screens, and restart.");
+                return true;
+            }
+
+            if (!run.Dead || verification.Waypoint > 0) return false;
+            SaveVerificationFrame("14-player-death");
+            verification.Waypoint = 1;
+            verification.StageAge = 0;
+            verification.Captured = false;
+            run.Generator.Health = 1;
             return true;
         }
 
@@ -296,7 +535,7 @@ namespace Zombs
             if ((verification.Stage < Checkpoint.Outage || verification.Stage == Checkpoint.BossDefense) && run.Generator.Fuel < 80)
                 run.Refuel(run.Generator, verification.Stage == Checkpoint.BossDefense ? ResourceKind.Coal : ResourceKind.Wood);
             foreach (var building in run.Buildings)
-                if (building.Health < building.MaximumHealth * .65f) run.Repair(building);
+                if (verification.Stage != Checkpoint.ReviewLoss && building.Health < building.MaximumHealth * .65f) run.Repair(building);
         }
 
         private void SetUpBossVerification()

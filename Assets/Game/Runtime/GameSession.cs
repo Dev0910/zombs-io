@@ -33,7 +33,7 @@ namespace Zombs
             sceneCamera.orthographic = true;
             sceneCamera.orthographicSize = 11.2f;
             sceneCamera.clearFlags = CameraClearFlags.SolidColor;
-            sceneCamera.backgroundColor = new Color32(105, 138, 60, 255);
+            sceneCamera.backgroundColor = new Color32(20, 29, 36, 255);
             Application.targetFrameRate = 60;
             Application.runInBackground = true;
             profile = LocalProfile.Load();
@@ -51,6 +51,7 @@ namespace Zombs
         {
             if (run != null) run.EffectOccurred -= OnEffect;
             world?.Dispose();
+            if (titleFade != null) Destroy(titleFade);
         }
 
         private void Attach(RunState state)

@@ -4,7 +4,7 @@ A single-player Unity 2D survival game. Gather and build during the day, then de
 
 ## Play on Windows
 
-Run [Zombs.io Offline.exe](Builds/Windows/Zombs.io%20Offline.exe) with its accompanying files and data folder. The game runs offline and saves local settings and best scores. Leave **Map seed** blank for a new layout or enter a whole number to replay a layout. Find the current seed in the pause menu.
+Run [Zombs.io Offline.exe](Builds/Windows/Zombs.io%20Offline.exe) with its accompanying files and data folder. The game runs offline and saves local settings and best scores. The sci-fi visual direction and verification results are in the [art and UI review](ART-REVIEW.md). Leave **Map seed** blank for a new layout or enter a whole number to replay a layout. Find the current seed in the pause menu.
 
 ## First run
 
@@ -37,3 +37,5 @@ Ore and stone occur in deposits that deplete. Starter materials are close to the
 Open this folder in Unity **6000.4.9f1**, open [Survival.unity](Assets/Game/Survival.unity), and press Play. Tune timings, fuel, recipes, buildings, equipment, and waves in [Balance.asset](Assets/Game/Balance.asset). The default values used by **Zombs → Restore Default Balance** are in [GameCatalog.cs](Assets/Game/Runtime/GameCatalog.cs).
 
 Use **Zombs → Build Windows x64** to rebuild. Run the Edit Mode suite in Unity Test Runner. The development build accepts **-zombs-playthrough <output-folder>** to run the opening through two nights, an iron trip, production, the Miner unlock, and recovery from an empty tank. Add **-zombs-fast** for an accelerated check. **-zombs-first-boss** also runs a separate defense scenario with supplied build materials and returns to normal speed before the first boss.
+
+Add **-zombs-art-review** to capture title settings, valid and blocked placement, production, all shop tabs, every building type, a dense-wave fixture, and both loss screens. **-zombs-art-motion** also records a short normal-speed fight as a frame sequence.
