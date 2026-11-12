@@ -64,7 +64,7 @@ namespace Zombs
         private bool BlocksWorld(Vector2 screen)
         {
             Vector2 point = screen / Scale;
-            if (settings || shop || intro || run.Dead || run.Defeated) return true;
+            if (settings || shop || intro || confirmNewRun || run.Dead || run.Defeated) return true;
             return AirRect.Contains(point) || ClockRect.Contains(point) || CommandRect.Contains(point) ||
                 MapRect.Contains(point) || ResourcesRect.Contains(point) || BuildDock.Contains(point) ||
                 LoadoutDock.Contains(point) || (selected != null && StructureRect().Contains(point));
@@ -91,12 +91,12 @@ namespace Zombs
             GUI.matrix = Matrix4x4.Scale(new Vector3(Scale, Scale, 1));
             if (intro)
             {
-                GUI.enabled = enabled && !settings;
+                GUI.enabled = enabled && !settings && !confirmNewRun;
                 DrawIntro();
             }
             else if (run.Dead || run.Defeated)
             {
-                GUI.enabled = enabled && !settings;
+                GUI.enabled = enabled && !settings && !confirmNewRun;
                 DrawDeath();
             }
             else
@@ -121,6 +121,7 @@ namespace Zombs
             }
             GUI.enabled = enabled;
             if (settings) DrawSettings();
+            if (confirmNewRun) DrawNewRunConfirmation();
             GUI.matrix = matrix;
         }
 
@@ -140,10 +141,12 @@ namespace Zombs
             Text(new Rect(left, top + 12, width + 36, 96), "ZOMBS.IO", 82, TextColor, bold: true);
             Text(new Rect(left + 3, top + 105, width, 31), "OFFLINE SURVIVAL", 25, Air, bold: true);
 
-            Rect card = new(left, top + 159, width, 166);
+            bool hasSave = savedRun != null;
+            Rect card = new(left, top + 159, width, hasSave ? 198 : 166);
             Frame(card, Panel, Line);
             Text(Inset(card, 17, 12, 18), "CALL SIGN", 13, MutedText, bold: true);
-            Text(new Rect(card.x + 247, card.y + 12, 138, 18), "MAP SEED (OPTIONAL)", 13, MutedText, bold: true);
+            Text(new Rect(card.x + 247, card.y + 12, 138, 18), hasSave ? "MAP SEED (NEW RUN)" : "MAP SEED (OPTIONAL)",
+                13, MutedText, bold: true);
             if (inputStyle == null)
             {
                 inputStyle = new GUIStyle(GUI.skin.textField)
@@ -159,20 +162,59 @@ namespace Zombs
             }
             profile.nickname = Field(new Rect(card.x + 17, card.y + 37, 216, 39), "CallSign", profile.nickname ?? "", 20);
             seedInput = Field(new Rect(card.x + 247, card.y + 37, 138, 39), "MapSeed", seedInput, 11);
-            if (Button(Inset(card, 17, 89, 48), "DEPLOY", Green, 23) ||
-                (!settings && Event.current.type == EventType.KeyDown && Event.current.keyCode is KeyCode.Return or KeyCode.KeypadEnter))
+            bool enter = GUI.enabled && Event.current.type == EventType.KeyDown &&
+                Event.current.keyCode is KeyCode.Return or KeyCode.KeypadEnter;
+            if (enter) Event.current.Use();
+            if (hasSave)
             {
-                if (Event.current.type == EventType.KeyDown) Event.current.Use();
-                Begin();
+                if (Button(new Rect(card.x + 17, card.y + 89, 216, 48), "CONTINUE", Green, 23) || enter)
+                {
+                    ContinueRun();
+                    return;
+                }
+                if (Button(new Rect(card.x + 247, card.y + 89, 138, 48), "NEW RUN", Slot, 20))
+                    RequestNewRun();
+                string stage = savedRun.Defeated ? $"Generator destroyed  /  Wave {savedRun.Wave}" :
+                    savedRun.Dead ? $"Suit signal lost  /  Wave {savedRun.Wave}" :
+                    savedRun.Generator == null ? "Before deployment" :
+                    savedRun.Night ? $"Night  /  Wave {savedRun.Wave}" : $"Daylight  /  Wave {savedRun.Wave + 1} ahead";
+                Text(Inset(card, 17, 141, 23), $"{stage}  /  Seed {savedRun.Seed}", 15, MutedText);
+            }
+            else if (Button(Inset(card, 17, 89, 48), "DEPLOY", Green, 23) || enter)
+            {
+                RequestNewRun();
                 if (!intro) return;
             }
-            if (notice != null && Time.unscaledTime < noticeUntil)
-                Text(Inset(card, 17, 140, 21), notice, 14, Coral);
+            if (!confirmNewRun) DrawCheckpointNotice(Inset(card, 17, hasSave ? 166 : 140, 23));
 
             Text(new Rect(left, card.yMax + 17, width, 24), "Place a generator. Gather supplies. Survive the night.", 17, TextColor);
             Text(new Rect(left, card.yMax + 48, width, 24), "WASD   Move     •     Mouse   Aim / interact     •     G   Generator", 14, MutedText);
             Text(new Rect(left, card.yMax + 75, width, 24), $"BEST WAVE  {profile.bestWave}     /     BEST SCORE  {profile.bestScore:N0}", 15, BrightGold, bold: true);
             if (Button(new Rect(Width - 133, 25, 108, 37), "SETTINGS", Slot, 16)) settings = true;
+        }
+
+        private void DrawNewRunConfirmation()
+        {
+            Dim();
+            Rect rect = new((Width - 454) * .5f, (Height - 211) * .5f, 454, 211);
+            Frame(rect, Panel, Line);
+            Fill(new Rect(rect.x, rect.y, rect.width, 3), Coral);
+            Text(Inset(rect, 22, 15, 42), "START A NEW RUN?", 33, TextColor, bold: true);
+            Text(Inset(rect, 22, 62, 47), "This will replace your saved survival run.", 18, MutedText,
+                TextAnchor.UpperLeft, wrap: true);
+            if (Button(new Rect(rect.x + 22, rect.y + 117, 197, 44), "CANCEL", Green, 20))
+            {
+                confirmNewRun = false;
+                notice = null;
+            }
+            if (Button(new Rect(rect.x + 235, rect.y + 117, 197, 44), "START NEW RUN", Red, 20)) Begin();
+            DrawCheckpointNotice(Inset(rect, 22, 170, 29));
+        }
+
+        private void DrawCheckpointNotice(Rect rect)
+        {
+            if (notice != null && Time.unscaledTime < noticeUntil)
+                Text(rect, notice, 14, Coral, wrap: true);
         }
 
         private string Field(Rect rect, string name, string value, int maxLength)
@@ -736,10 +778,11 @@ namespace Zombs
                 else run.Respawn();
                 return;
             }
-            if (Button(restart, "NEW RUN", Slot, 21)) Begin();
+            if (Button(restart, "NEW RUN", Slot, 21)) RequestNewRun();
             string recover = run.Defeated ? "Same map. Keep 75% of materials and all boss tokens." : "Return to the generator with your equipment and supplies.";
             Text(new Rect(recovery.x, recovery.yMax + 10, recovery.width, 61), recover, 16, MutedText, TextAnchor.UpperLeft, wrap: true);
             Text(new Rect(restart.x, restart.yMax + 10, restart.width, 61), "Start over with empty supplies.", 16, MutedText, TextAnchor.UpperLeft, wrap: true);
+            if (!confirmNewRun) DrawCheckpointNotice(Inset(rect, 23, 237, 28));
         }
 
         private void DrawSettings()
@@ -768,13 +811,9 @@ namespace Zombs
             if (Button(Inset(rect, 22, 248, 44), intro ? "BACK" : "RESUME", Green, 22)) settings = false;
             if (!intro)
             {
-                if (Button(new Rect(rect.x + 22, rect.y + 307, 144, 35), "MAIN MENU", Slot, 16))
-                {
-                    intro = true;
-                    settings = false;
-                    Attach(new RunState(catalog, 5238));
-                }
+                if (Button(new Rect(rect.x + 22, rect.y + 307, 164, 35), "SAVE & MAIN MENU", Slot, 16)) SaveAndReturnToTitle();
                 Text(new Rect(rect.x + 185, rect.y + 309, 247, 31), $"Map seed  {run.Seed}", 16, MutedText, TextAnchor.MiddleRight);
+                if (settings) DrawCheckpointNotice(Inset(rect, 22, 345, 23));
             }
         }
 

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
@@ -287,12 +288,106 @@ namespace Zombs
             Advance(run, 70);
             Assert.That(run.Defeated, Is.True);
             Assert.That(run.Buildings, Is.Empty);
+            run = RunState.Restore(catalog, JsonUtility.FromJson<RunSnapshot>(JsonUtility.ToJson(run.Capture())));
+            Assert.That(run, Is.Not.Null);
+            Assert.That(run.Defeated, Is.True);
             Assert.That(run.RecoverAfterDefeat(), Is.True);
             Assert.That(run.Resources.wood, Is.EqualTo(67));
             Assert.That(run.ItemTier(ItemKind.Bow), Is.Zero);
             Assert.That(run.Wave, Is.Zero);
             Assert.That(run.Health, Is.EqualTo(catalog.playerHealth));
             Place(run, BuildingKind.Generator, Generator);
+        }
+
+        [Test]
+        public void CheckpointRoundTripContinuesTheSameWaveAndProduction()
+        {
+            catalog.daySeconds = 1;
+            var run = New(new Price(200, 200, iron: 20, coal: 6, parts: 20));
+            Place(run, BuildingKind.Generator, Generator);
+            Assert.That(run.Upgrade(run.Generator, false), Is.EqualTo(1));
+            var smelter = Place(run, BuildingKind.Smelter, North);
+            Assert.That(run.QueueProduction(smelter), Is.GreaterThan(0));
+            var miner = Place(run, BuildingKind.Miner, new Vector2(1, 3));
+            var deposit = miner.DepositNode;
+            deposit.Extract(deposit.Remaining);
+            Assert.That(run.Refuel(miner, ResourceKind.Coal), Is.True);
+            Assert.That(run.Buy(ItemKind.Woody), Is.True);
+            Assert.That(run.Buy(ItemKind.Bow), Is.True);
+            run.Equip(ItemKind.Bow);
+            Advance(run, 3);
+            run.Step(Vector2.zero, Vector2.left, true);
+            Assert.That(run.Night, Is.True);
+            Assert.That(run.Enemies, Is.Not.Empty);
+            Assert.That(run.Projectiles, Is.Not.Empty);
+            Assert.That(smelter.Queued, Is.GreaterThan(0));
+            Assert.That(miner.DepositNode, Is.Null);
+
+            string checkpoint = JsonUtility.ToJson(run.Capture());
+            var loaded = RunState.Restore(catalog, JsonUtility.FromJson<RunSnapshot>(checkpoint));
+            Assert.That(loaded, Is.Not.Null);
+            Assert.That(JsonUtility.ToJson(loaded.Capture()), Is.EqualTo(checkpoint));
+            Assert.That(loaded.Nodes.Single(node => node.Position == deposit.Position).Depleted, Is.True);
+            Assert.That(loaded.Nodes[0].Remaining, Is.EqualTo(float.PositiveInfinity));
+            Assert.That(loaded.At(loaded.Generator.Position), Is.SameAs(loaded.Generator));
+            Assert.That(loaded.Count(BuildingKind.Miner), Is.EqualTo(1));
+
+            Advance(run, 4, aim: Vector2.left, attack: true);
+            Advance(loaded, 4, aim: Vector2.left, attack: true);
+            Assert.That(JsonUtility.ToJson(loaded.Capture()), Is.EqualTo(JsonUtility.ToJson(run.Capture())));
+        }
+
+        [Test]
+        public void CheckpointRejectsInvalidVersionAndOverlappingFootprints()
+        {
+            var run = New();
+            Place(run, BuildingKind.Generator, Generator);
+            var checkpoint = run.Capture();
+            checkpoint.version++;
+            Assert.That(RunState.Restore(catalog, checkpoint), Is.Null);
+            checkpoint.version = RunSnapshot.CurrentVersion;
+            var overlapping = checkpoint.buildings[0];
+            overlapping.kind = (int)BuildingKind.Arrow;
+            overlapping.size = catalog.Building(BuildingKind.Arrow).size;
+            checkpoint.buildings.Add(overlapping);
+            Assert.That(RunState.Restore(catalog, checkpoint), Is.Null);
+        }
+
+        [Test]
+        public void DamagedCheckpointFallsBackAndKeepsTheBackupUntilAReplacementIsSafe()
+        {
+            string directory = Path.Combine(Path.GetTempPath(), "zombs-save-test-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var store = new RunSaveStore(directory);
+                var run = New();
+                Place(run, BuildingKind.Generator, Generator);
+                Assert.That(store.Save(run, newRun: true), Is.True);
+                float oldFuel = run.Generator.Fuel;
+                Advance(run, 3);
+                Assert.That(store.Save(run), Is.True);
+
+                string path = Path.Combine(directory, "survival-run.json");
+                File.WriteAllText(path, "{\"version\":1}");
+                store = new RunSaveStore(directory);
+                var recovered = store.Load(catalog, out bool usedBackup);
+                Assert.That(usedBackup, Is.True);
+                Assert.That(recovered.Generator.Fuel, Is.EqualTo(oldFuel));
+
+                string backup = File.ReadAllText(path + ".bak");
+                Assert.That(store.Save(recovered), Is.True);
+                Assert.That(File.ReadAllText(path + ".bak"), Is.EqualTo(backup));
+                Assert.That(store.Load(catalog, out usedBackup).Generator.Fuel, Is.EqualTo(oldFuel));
+                Assert.That(usedBackup, Is.False);
+
+                Assert.That(store.Save(new RunState(catalog, 2026), newRun: true), Is.True);
+                Assert.That(store.Load(catalog, out _).Seed, Is.EqualTo(2026));
+                Assert.That(File.Exists(path + ".bak"), Is.False);
+            }
+            finally
+            {
+                if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            }
         }
 
         private RunState New(Price resources = default) => new(catalog, 5238, resources);

@@ -29,6 +29,7 @@ namespace Zombs
         public bool Depleted => Remaining <= 0;
         public float Flash { get; internal set; }
         private readonly float initialAmount;
+        internal bool WasGathered => Remaining != initialAmount;
 
         internal ResourceNode(Vector2 position, ResourceKind kind, float amount)
         {
@@ -48,6 +49,13 @@ namespace Zombs
         {
             Remaining = initialAmount;
             Flash = 0;
+        }
+
+        internal bool RestoreRemaining(float amount)
+        {
+            if (!(amount >= 0 && amount <= initialAmount) || float.IsInfinity(amount)) return false;
+            Remaining = amount;
+            return true;
         }
     }
 
@@ -100,7 +108,7 @@ namespace Zombs
         private float attackCooldown, healRemaining, playerRecovery, poisonClock;
         private float spawnClock, potionCooldown, petPotionCooldown, respawnProtection;
         private float petAttackCooldown, petRespawnCooldown, shieldRecovery, healRecharge, timeoutRecharge;
-        private int remainingSpawns, nextSpawn;
+        private int remainingSpawns, nextSpawn, randomDraws;
         private bool nightHadWave;
         private Vector2 healPoint;
 
@@ -233,14 +241,9 @@ namespace Zombs
             if (result != Placement.Allowed) return false;
             var building = new Structure(Catalog.Building(kind), AnchorFor(kind, point), rotation);
             Resources -= building.Invested;
-            buildings.Add(building);
-            counts[(int)kind]++;
-            for (int x = 0; x < building.Data.size; x++)
-            for (int y = 0; y < building.Data.size; y++)
-                occupied.Add(building.Anchor + new Vector2Int(x, y), building);
+            AddBuilding(building);
             if (kind == BuildingKind.Generator)
             {
-                Generator = building;
                 building.Fuel = Mathf.Min(Catalog.initialFuel, FuelCapacity(building));
                 PhaseTime = 0;
                 Night = false;
@@ -252,6 +255,16 @@ namespace Zombs
             }
             Emit(EffectKind.Placed, building.Position);
             return true;
+        }
+
+        private void AddBuilding(Structure building)
+        {
+            buildings.Add(building);
+            counts[(int)building.Kind]++;
+            if (building.Kind == BuildingKind.Generator) Generator = building;
+            for (int x = 0; x < building.Data.size; x++)
+            for (int y = 0; y < building.Data.size; y++)
+                occupied.Add(building.Anchor + new Vector2Int(x, y), building);
         }
 
         public bool InReach(Structure building) =>
@@ -880,7 +893,11 @@ namespace Zombs
             list.Add(node);
         }
 
-        private float Range(float from, float to) => Mathf.Lerp(from, to, (float)random.NextDouble());
+        private float Range(float from, float to)
+        {
+            randomDraws++;
+            return Mathf.Lerp(from, to, (float)random.NextDouble());
+        }
         private void AddScore(long score) => Score = (int)Math.Min(int.MaxValue, Score + score);
         private void Emit(EffectKind kind, Vector2 point, string label = null) => EffectOccurred?.Invoke(new Effect(kind, point, label));
     }

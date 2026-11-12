@@ -34,7 +34,7 @@ namespace Zombs
         private static readonly Vector2[] OreRoute = { new(1, 1.15f), new(7, 2), new(9, -4), new(12, -7) };
         private static readonly Vector2[] HomeRoute = { new(9, -4), new(7, 2), new(1, 1.15f), Vector2.zero };
 
-        private void Start()
+        private void InitializeVerification()
         {
             string[] args = Environment.GetCommandLineArgs();
             int index = Array.IndexOf(args, "-zombs-playthrough");

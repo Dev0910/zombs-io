@@ -6,6 +6,10 @@ A single-player Unity 2D survival game. Gather and build during the day, then de
 
 Run [Zombs.io Offline.exe](Builds/Windows/Zombs.io%20Offline.exe) with its accompanying files and data folder. The game runs offline and saves local settings and best scores. The sci-fi visual direction and verification results are in the [art and UI review](ART-REVIEW.md). Leave **Map seed** blank for a new layout or enter a whole number to replay a layout. Find the current seed in the pause menu.
 
+The game keeps one local survival run. Choose **Save & Main Menu** from pause, or close the game normally to save. It also autosaves every 30 seconds during play. Choose **Continue** from the title screen to return to the same map and wave. **New Run** asks before replacing an existing checkpoint.
+
+See the [project backlog](BACKLOG.md) for current development priorities.
+
 ## First run
 
 1. Press **G** and place the Oxygen Generator in the marked starting area. Placement starts the first day and gives you 90 seconds of fuel.

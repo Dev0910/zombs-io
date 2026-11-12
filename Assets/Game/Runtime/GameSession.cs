@@ -6,6 +6,7 @@ namespace Zombs
     [RequireComponent(typeof(Camera), typeof(AudioListener))]
     public sealed partial class GameSession : MonoBehaviour
     {
+        private const float AutosaveInterval = 30;
         [SerializeField] private GameCatalog catalog;
         private Camera sceneCamera;
         private WorldView world;
@@ -17,12 +18,16 @@ namespace Zombs
         private int rotation, shopTab, hintStep;
         private string seedInput = "";
         private LocalProfile profile;
+        private RunSaveStore saveStore;
+        private RunState savedRun;
+        private float nextAutosave;
+        private bool confirmNewRun, checkpointPending;
         private BuildingKind? placing;
         private Structure selected;
         private string notice;
         private float noticeUntil, tickRemainder;
         private Vector2 cursor;
-        private int lastWave;
+        private int lastWave, pendingSeed;
 
         public void SetCatalog(GameCatalog value) => catalog = value;
 
@@ -45,6 +50,18 @@ namespace Zombs
             blastSound = Sound("Blast", .17f, 64, .70f);
             world = new WorldView(sceneCamera);
             Attach(new RunState(catalog, 5238));
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+            InitializeVerification();
+            if (verification != null) return;
+#endif
+            LoadCheckpoint(Application.persistentDataPath);
+        }
+
+        private void LoadCheckpoint(string directory)
+        {
+            saveStore = new RunSaveStore(directory);
+            savedRun = saveStore.Load(catalog, out bool recoveredBackup);
+            if (recoveredBackup) Notify("Recovered the previous checkpoint.", 8);
         }
 
         private void OnDestroy()
@@ -62,24 +79,72 @@ namespace Zombs
             world.Attach(run);
             ResetSelection();
             tickRemainder = 0;
-            lastWave = 0;
+            lastWave = run.Wave;
             hintStep = 0;
         }
 
-        private void Begin()
+        private void RequestNewRun()
         {
-            int seed = Guid.NewGuid().GetHashCode();
-            if (!string.IsNullOrWhiteSpace(seedInput) && !int.TryParse(seedInput, out seed))
+            pendingSeed = Guid.NewGuid().GetHashCode();
+            if (!string.IsNullOrWhiteSpace(seedInput) && !int.TryParse(seedInput, out pendingSeed))
             {
                 Notify("Enter a whole number for the seed, or leave it blank.");
                 return;
             }
+            if (savedRun != null || !intro)
+            {
+                confirmNewRun = true;
+                notice = null;
+                return;
+            }
+            Begin();
+        }
+
+        private void Begin()
+        {
+            var next = new RunState(catalog, pendingSeed);
+            if (!WriteCheckpoint(next, newRun: true)) return;
+            EnterRun(next);
+        }
+
+        private void ContinueRun()
+        {
+            if (savedRun != null) EnterRun(savedRun);
+        }
+
+        private void EnterRun(RunState state)
+        {
             profile.nickname = string.IsNullOrWhiteSpace(profile.nickname) ? "Player" : profile.nickname.Trim();
-            profile.Save();
-            Attach(new RunState(catalog, seed));
+            if (saveStore != null) profile.Save();
+            Attach(state);
+            savedRun = null;
             intro = false;
+            nextAutosave = Time.unscaledTime + AutosaveInterval;
+            confirmNewRun = settings = shop = checkpointPending = false;
+            notice = null;
+        }
+
+        private bool WriteCheckpoint(RunState state, bool newRun = false)
+        {
+            nextAutosave = Time.unscaledTime + AutosaveInterval;
+            if (saveStore == null || saveStore.Save(state, newRun)) return true;
+            Notify("Could not save. Check that the game can write to local storage.", 7);
+            return false;
+        }
+
+        private void SaveAndReturnToTitle()
+        {
+            if (!WriteCheckpoint(run)) return;
+            savedRun = run;
+            intro = true;
             settings = shop = false;
             notice = null;
+            Attach(new RunState(catalog, 5238));
+        }
+
+        private void OnApplicationQuit()
+        {
+            if (!intro && saveStore != null) WriteCheckpoint(run);
         }
 
         private void RestartAfterLoss()
@@ -89,6 +154,7 @@ namespace Zombs
             notice = null;
             lastWave = 0;
             hintStep = 0;
+            checkpointPending = true;
         }
 
         private void Update()
@@ -97,10 +163,20 @@ namespace Zombs
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
             if (UpdateVerification()) return;
 #endif
+            if (confirmNewRun)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape)) confirmNewRun = false;
+                return;
+            }
             if (intro)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) settings = false;
                 return;
+            }
+            if (checkpointPending || (!settings && !run.Defeated && Time.unscaledTime >= nextAutosave))
+            {
+                checkpointPending = false;
+                WriteCheckpoint(run);
             }
             Vector3 mouse = Input.mousePosition;
             Vector2 screen = new(mouse.x, Screen.height - mouse.y);
@@ -291,6 +367,7 @@ namespace Zombs
                 profile.bestWave = Mathf.Max(profile.bestWave, run.Wave);
                 profile.bestScore = Mathf.Max(profile.bestScore, run.Score);
                 profile.Save();
+                checkpointPending = true;
             }
             if (profile.muted || audioCooldown > 0) return;
             switch (effect.Kind)
