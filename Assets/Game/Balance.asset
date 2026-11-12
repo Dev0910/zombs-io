@@ -1,0 +1,1119 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 969dd5b87f51a894e8a0af9e02bec655, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Zombs.Runtime::Zombs.GameCatalog
+  buildings:
+  - kind: 0
+    title: Wall
+    description: Blocks enemies from reaching your towers.
+    size: 1
+    limit: 250
+    prices:
+    - wood: 2
+      stone: 0
+      gold: 0
+      tokens: 0
+    - wood: 6
+      stone: 0
+      gold: 80
+      tokens: 0
+    - wood: 14
+      stone: 0
+      gold: 200
+      tokens: 0
+    - wood: 24
+      stone: 0
+      gold: 400
+      tokens: 0
+    - wood: 40
+      stone: 0
+      gold: 880
+      tokens: 0
+    - wood: 72
+      stone: 0
+      gold: 1800
+      tokens: 0
+    - wood: 120
+      stone: 0
+      gold: 3600
+      tokens: 0
+    - wood: 220
+      stone: 0
+      gold: 7200
+      tokens: 0
+    health:
+    - 150
+    - 250
+    - 388
+    - 601
+    - 931
+    - 1443
+    - 2237
+    - 3467
+    damage: []
+    income: []
+    capacity: []
+    fuelCapacity: []
+    ranges: []
+    range: 0
+    interval: 0
+    splash: 0
+  - kind: 1
+    title: Door
+    description: Lets you walk through your defenses.
+    size: 1
+    limit: 40
+    prices:
+    - wood: 5
+      stone: 5
+      gold: 0
+      tokens: 0
+    - wood: 6
+      stone: 6
+      gold: 80
+      tokens: 0
+    - wood: 14
+      stone: 14
+      gold: 200
+      tokens: 0
+    - wood: 24
+      stone: 24
+      gold: 400
+      tokens: 0
+    - wood: 40
+      stone: 40
+      gold: 880
+      tokens: 0
+    - wood: 72
+      stone: 72
+      gold: 1800
+      tokens: 0
+    - wood: 120
+      stone: 120
+      gold: 3600
+      tokens: 0
+    - wood: 220
+      stone: 220
+      gold: 7200
+      tokens: 0
+    health:
+    - 100
+    - 180
+    - 279
+    - 432
+    - 670
+    - 1039
+    - 1610
+    - 2496
+    damage: []
+    income: []
+    capacity: []
+    fuelCapacity: []
+    ranges: []
+    range: 0
+    interval: 0
+    splash: 0
+  - kind: 2
+    title: Slow Trap
+    description: Slows enemies entering your base.
+    size: 1
+    limit: 12
+    prices:
+    - wood: 5
+      stone: 5
+      gold: 0
+      tokens: 0
+    - wood: 6
+      stone: 6
+      gold: 80
+      tokens: 0
+    - wood: 14
+      stone: 14
+      gold: 200
+      tokens: 0
+    - wood: 24
+      stone: 24
+      gold: 400
+      tokens: 0
+    - wood: 40
+      stone: 40
+      gold: 880
+      tokens: 0
+    - wood: 72
+      stone: 72
+      gold: 1800
+      tokens: 0
+    - wood: 120
+      stone: 120
+      gold: 3600
+      tokens: 0
+    - wood: 220
+      stone: 220
+      gold: 7200
+      tokens: 0
+    health:
+    - 100
+    - 150
+    - 232
+    - 360
+    - 559
+    - 866
+    - 1342
+    - 2080
+    damage: []
+    income: []
+    capacity: []
+    fuelCapacity: []
+    ranges: []
+    range: 0
+    interval: 0
+    splash: 0
+  - kind: 3
+    title: Arrow Tower
+    description: Fast single-target shots.
+    size: 2
+    limit: 6
+    prices:
+    - wood: 5
+      stone: 5
+      gold: 0
+      tokens: 0
+    - wood: 25
+      stone: 20
+      gold: 100
+      tokens: 0
+    - wood: 35
+      stone: 35
+      gold: 500
+      tokens: 0
+    - wood: 60
+      stone: 60
+      gold: 1000
+      tokens: 0
+    - wood: 100
+      stone: 100
+      gold: 2200
+      tokens: 0
+    - wood: 180
+      stone: 180
+      gold: 4500
+      tokens: 0
+    - wood: 300
+      stone: 300
+      gold: 9000
+      tokens: 0
+    - wood: 550
+      stone: 550
+      gold: 18000
+      tokens: 0
+    health:
+    - 150
+    - 200
+    - 384
+    - 595
+    - 922
+    - 1429
+    - 2214
+    - 3432
+    damage:
+    - 20
+    - 40
+    - 48
+    - 74
+    - 115
+    - 179
+    - 277
+    - 430
+    income: []
+    capacity: []
+    fuelCapacity: []
+    ranges:
+    - 7.142857
+    - 7.7380953
+    - 8.333333
+    - 8.928572
+    - 9.523809
+    - 10.119047
+    - 10.714286
+    - 11.309524
+    range: 7.142857
+    interval: 0.52
+    splash: 0
+  - kind: 4
+    title: Cannon Tower
+    description: Slow shots with area damage.
+    size: 2
+    limit: 6
+    prices:
+    - wood: 15
+      stone: 15
+      gold: 0
+      tokens: 0
+    - wood: 15
+      stone: 15
+      gold: 200
+      tokens: 0
+    - wood: 35
+      stone: 35
+      gold: 500
+      tokens: 0
+    - wood: 60
+      stone: 60
+      gold: 1000
+      tokens: 0
+    - wood: 100
+      stone: 100
+      gold: 2200
+      tokens: 0
+    - wood: 180
+      stone: 180
+      gold: 4500
+      tokens: 0
+    - wood: 300
+      stone: 300
+      gold: 9000
+      tokens: 0
+    - wood: 550
+      stone: 550
+      gold: 18000
+      tokens: 0
+    health:
+    - 180
+    - 297
+    - 460
+    - 714
+    - 1106
+    - 1714
+    - 2657
+    - 4119
+    damage:
+    - 35
+    - 54
+    - 84
+    - 130
+    - 202
+    - 313
+    - 485
+    - 752
+    income: []
+    capacity: []
+    fuelCapacity: []
+    ranges: []
+    range: 6.6
+    interval: 1.2
+    splash: 1.6
+  - kind: 5
+    title: Melee Tower
+    description: High damage in one direction. Press R to rotate.
+    size: 2
+    limit: 6
+    prices:
+    - wood: 10
+      stone: 10
+      gold: 0
+      tokens: 0
+    - wood: 15
+      stone: 15
+      gold: 200
+      tokens: 0
+    - wood: 35
+      stone: 35
+      gold: 500
+      tokens: 0
+    - wood: 60
+      stone: 60
+      gold: 1000
+      tokens: 0
+    - wood: 100
+      stone: 100
+      gold: 2200
+      tokens: 0
+    - wood: 180
+      stone: 180
+      gold: 4500
+      tokens: 0
+    - wood: 300
+      stone: 300
+      gold: 9000
+      tokens: 0
+    - wood: 550
+      stone: 550
+      gold: 18000
+      tokens: 0
+    health:
+    - 240
+    - 396
+    - 614
+    - 951
+    - 1475
+    - 2286
+    - 3543
+    - 5491
+    damage:
+    - 51
+    - 79
+    - 123
+    - 190
+    - 294
+    - 456
+    - 707
+    - 1096
+    income: []
+    capacity: []
+    fuelCapacity: []
+    ranges: []
+    range: 3
+    interval: 0.62
+    splash: 0
+  - kind: 6
+    title: Bomb Tower
+    description: Large explosions at a slow rate of fire.
+    size: 2
+    limit: 6
+    prices:
+    - wood: 10
+      stone: 10
+      gold: 0
+      tokens: 0
+    - wood: 25
+      stone: 25
+      gold: 100
+      tokens: 0
+    - wood: 40
+      stone: 40
+      gold: 200
+      tokens: 0
+    - wood: 60
+      stone: 60
+      gold: 1000
+      tokens: 0
+    - wood: 100
+      stone: 100
+      gold: 2200
+      tokens: 0
+    - wood: 180
+      stone: 180
+      gold: 4500
+      tokens: 0
+    - wood: 300
+      stone: 300
+      gold: 9000
+      tokens: 0
+    - wood: 550
+      stone: 550
+      gold: 18000
+      tokens: 0
+    health:
+    - 150
+    - 200
+    - 400
+    - 595
+    - 922
+    - 1429
+    - 2214
+    - 3432
+    damage:
+    - 40
+    - 60
+    - 100
+    - 149
+    - 231
+    - 358
+    - 555
+    - 860
+    income: []
+    capacity: []
+    fuelCapacity: []
+    ranges: []
+    range: 11.904762
+    interval: 2.15
+    splash: 2.5
+  - kind: 7
+    title: Mage Tower
+    description: Fires multiple projectiles at close range.
+    size: 2
+    limit: 6
+    prices:
+    - wood: 15
+      stone: 15
+      gold: 0
+      tokens: 0
+    - wood: 15
+      stone: 15
+      gold: 200
+      tokens: 0
+    - wood: 35
+      stone: 35
+      gold: 500
+      tokens: 0
+    - wood: 60
+      stone: 60
+      gold: 1000
+      tokens: 0
+    - wood: 100
+      stone: 100
+      gold: 2200
+      tokens: 0
+    - wood: 180
+      stone: 180
+      gold: 4500
+      tokens: 0
+    - wood: 300
+      stone: 300
+      gold: 9000
+      tokens: 0
+    - wood: 550
+      stone: 550
+      gold: 18000
+      tokens: 0
+    health:
+    - 170
+    - 280
+    - 435
+    - 674
+    - 1045
+    - 1619
+    - 2510
+    - 3890
+    damage:
+    - 21
+    - 33
+    - 50
+    - 78
+    - 121
+    - 188
+    - 291
+    - 451
+    income: []
+    capacity: []
+    fuelCapacity: []
+    ranges: []
+    range: 4.8
+    interval: 0.67
+    splash: 0
+  - kind: 8
+    title: Gold Mine
+    description: Generates gold over time.
+    size: 2
+    limit: 8
+    prices:
+    - wood: 5
+      stone: 5
+      gold: 0
+      tokens: 0
+    - wood: 15
+      stone: 15
+      gold: 200
+      tokens: 0
+    - wood: 35
+      stone: 35
+      gold: 500
+      tokens: 0
+    - wood: 60
+      stone: 60
+      gold: 1000
+      tokens: 0
+    - wood: 100
+      stone: 100
+      gold: 2200
+      tokens: 0
+    - wood: 180
+      stone: 180
+      gold: 4500
+      tokens: 0
+    - wood: 300
+      stone: 300
+      gold: 9000
+      tokens: 0
+    - wood: 550
+      stone: 550
+      gold: 18000
+      tokens: 0
+    health:
+    - 150
+    - 250
+    - 388
+    - 601
+    - 931
+    - 1443
+    - 2237
+    - 3467
+    damage: []
+    income:
+    - 6
+    - 8
+    - 10.5
+    - 15
+    - 18
+    - 22.5
+    - 37.5
+    - 52.5
+    capacity: []
+    fuelCapacity: []
+    ranges: []
+    range: 0
+    interval: 0
+    splash: 0
+  - kind: 9
+    title: Resource Harvester
+    description: Spend gold to harvest wood and stone automatically.
+    size: 2
+    limit: 2
+    prices:
+    - wood: 50
+      stone: 50
+      gold: 0
+      tokens: 0
+    - wood: 15
+      stone: 15
+      gold: 200
+      tokens: 0
+    - wood: 35
+      stone: 35
+      gold: 500
+      tokens: 0
+    - wood: 60
+      stone: 60
+      gold: 1000
+      tokens: 0
+    - wood: 100
+      stone: 100
+      gold: 2200
+      tokens: 0
+    - wood: 180
+      stone: 180
+      gold: 4500
+      tokens: 0
+    - wood: 300
+      stone: 300
+      gold: 9000
+      tokens: 0
+    - wood: 550
+      stone: 550
+      gold: 18000
+      tokens: 0
+    health:
+    - 300
+    - 450
+    - 698
+    - 1081
+    - 1676
+    - 2597
+    - 4026
+    - 6240
+    damage: []
+    income:
+    - 3.75
+    - 6.975
+    - 6.825
+    - 10.8
+    - 12.375
+    - 15
+    - 20.25
+    - 24
+    capacity:
+    - 800
+    - 1600
+    - 2400
+    - 3200
+    - 4000
+    - 4800
+    - 5600
+    - 7200
+    fuelCapacity:
+    - 1600
+    - 2400
+    - 2800
+    - 4000
+    - 4800
+    - 4800
+    - 9600
+    - 12000
+    ranges: []
+    range: 0
+    interval: 0
+    splash: 0
+  - kind: 10
+    title: Gold Stash
+    description: Establishes your base and starts zombie waves.
+    size: 2
+    limit: 1
+    prices:
+    - wood: 0
+      stone: 0
+      gold: 0
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 5000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 10000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 16000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 32000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 64000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 120000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 200000
+      tokens: 0
+    health:
+    - 1500
+    - 1800
+    - 2300
+    - 2800
+    - 3600
+    - 4800
+    - 6500
+    - 9000
+    damage: []
+    income: []
+    capacity: []
+    fuelCapacity: []
+    ranges: []
+    range: 0
+    interval: 0
+    splash: 0
+  items:
+  - kind: 0
+    title: Pickaxe
+    description: Melee weapon and harvesting tool.
+    prices:
+    - wood: 0
+      stone: 0
+      gold: 0
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 1000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 3000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 6000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 12000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 24000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 48000
+      tokens: 0
+    power:
+    - 20
+    - 20
+    - 25
+    - 30
+    - 35
+    - 42
+    - 52
+    recovery: []
+    recharge: []
+    interval: 0.3
+    range: 1.65
+    splash: 0
+  - kind: 1
+    title: Spear
+    description: Longer reach and quick thrusts.
+    prices:
+    - wood: 0
+      stone: 0
+      gold: 1400
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 2800
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 5600
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 11200
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 22500
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 45000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 90000
+      tokens: 0
+    power:
+    - 30
+    - 37
+    - 45
+    - 53
+    - 65
+    - 82
+    - 105
+    recovery: []
+    recharge: []
+    interval: 0.25
+    range: 2.55
+    splash: 0
+  - kind: 2
+    title: Bow
+    description: Fires an arrow in the direction you aim.
+    prices:
+    - wood: 0
+      stone: 0
+      gold: 100
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 500
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 2000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 5000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 15000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 35000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 80000
+      tokens: 0
+    power:
+    - 20
+    - 28
+    - 40
+    - 55
+    - 76
+    - 100
+    - 136
+    recovery: []
+    recharge: []
+    interval: 0.5
+    range: 12
+    splash: 0
+  - kind: 3
+    title: Bomb
+    description: Throws an explosive that damages nearby enemies.
+    prices:
+    - wood: 0
+      stone: 0
+      gold: 100
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 500
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 2000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 5000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 15000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 35000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 80000
+      tokens: 0
+    power:
+    - 10
+    - 16
+    - 25
+    - 39
+    - 55
+    - 80
+    - 110
+    recovery: []
+    recharge: []
+    interval: 0.5
+    range: 17.5
+    splash: 2.1
+  - kind: 4
+    title: Shield
+    description: Absorbs damage from zombies.
+    prices:
+    - wood: 0
+      stone: 0
+      gold: 1000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 3000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 7000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 14000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 18000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 22000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 24000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 30000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 45000
+      tokens: 0
+    - wood: 0
+      stone: 0
+      gold: 70000
+      tokens: 0
+    power:
+    - 500
+    - 1000
+    - 1800
+    - 4000
+    - 10000
+    - 20000
+    - 35000
+    - 50000
+    - 65000
+    - 85000
+    recovery:
+    - 10
+    - 9
+    - 8
+    - 7
+    - 6
+    - 6
+    - 6
+    - 6
+    - 6
+    - 6
+    recharge:
+    - 50
+    - 100
+    - 200
+    - 400
+    - 1000
+    - 2000
+    - 3500
+    - 5000
+    - 6500
+    - 8500
+    interval: 0
+    range: 0
+    splash: 0
+  - kind: 5
+    title: Health Potion
+    description: Heals you to full health. Press F to use.
+    prices:
+    - wood: 0
+      stone: 0
+      gold: 100
+      tokens: 0
+    power:
+    - 100
+    recovery: []
+    recharge: []
+    interval: 0
+    range: 0
+    splash: 0
+  - kind: 6
+    title: Pet Potion
+    description: Heals your active pet to full health.
+    prices:
+    - wood: 0
+      stone: 0
+      gold: 100
+      tokens: 0
+    power:
+    - 100
+    recovery: []
+    recharge: []
+    interval: 0
+    range: 0
+    splash: 0
+  - kind: 7
+    title: C. A. R. L
+    description: Fights by your side in close-range combat.
+    prices:
+    - wood: 0
+      stone: 0
+      gold: 0
+      tokens: 0
+    power:
+    - 16
+    recovery: []
+    recharge: []
+    interval: 0
+    range: 0
+    splash: 0
+  - kind: 8
+    title: Woody
+    description: Helps harvest the resource you attack.
+    prices:
+    - wood: 0
+      stone: 0
+      gold: 0
+      tokens: 0
+    power:
+    - 1.5
+    recovery: []
+    recharge: []
+    interval: 0
+    range: 0
+    splash: 0
+  - kind: 9
+    title: Horns
+    description: Equip the decorative horns.
+    prices:
+    - wood: 0
+      stone: 0
+      gold: 0
+      tokens: 0
+    power:
+    - 0
+    recovery: []
+    recharge: []
+    interval: 0
+    range: 0
+    splash: 0
+  zombies:
+  - color: {r: 0.35686275, g: 0.5294118, b: 0.2784314, a: 1}
+    firstWave: 1
+    health: 62
+    damage: 7
+    speed: 3.9
+    reward: 4
+  - color: {r: 0.41568628, g: 0.5568628, b: 0.6745098, a: 1}
+    firstWave: 9
+    health: 105
+    damage: 10
+    speed: 4.1
+    reward: 8
+  - color: {r: 0.8784314, g: 0.7411765, b: 0.28235295, a: 1}
+    firstWave: 17
+    health: 178
+    damage: 15
+    speed: 4.2
+    reward: 13
+  - color: {r: 0.73333335, g: 0.3019608, b: 0.2901961, a: 1}
+    firstWave: 33
+    health: 280
+    damage: 22
+    speed: 4.35
+    reward: 19
+  - color: {r: 0.5921569, g: 0.37254903, b: 0.6862745, a: 1}
+    firstWave: 57
+    health: 460
+    damage: 30
+    speed: 4.5
+    reward: 30
+  - color: {r: 0.8627451, g: 0.5372549, b: 0.2627451, a: 1}
+    firstWave: 89
+    health: 720
+    damage: 39
+    speed: 4.6
+    reward: 48
+  worldSize: 420
+  buildRadius: 18
+  reach: 12
+  playerSpeed: 7.6
+  playerHealth: 100
+  daySeconds: 60
+  nightSeconds: 60
+  spawnRadius: 13
+  spawnInterval: 1.35
+  firstBossWave: 9
+  bossInterval: 8
+  lastBossWave: 121
+  bossCount: 1
+  bossTokens: 100
+  bossHealth: 4800
+  bossDamage: 42
+  bossGold: 1100
+  firstWaveCount: 14
+  extraEnemiesPerWave: 6
+  maximumWaveCount: 85
+  harvestYield:
+  - 1.5
+  - 3
+  - 3
+  - 4.5
+  - 4.5
+  - 6
+  - 9
+  healPrice:
+    wood: 0
+    stone: 0
+    gold: 1000
+    tokens: 0
+  timeoutPrice:
+    wood: 0
+    stone: 0
+    gold: 10000
+    tokens: 0
+  healRadius: 12
+  healDuration: 10
+  healPerSecond: 0.1
+  healCooldown: 240
+  timeoutCooldown: 240
+  playerPotionCooldown: 15
+  petPotionCooldown: 10
+  invulnerableSeconds: 3

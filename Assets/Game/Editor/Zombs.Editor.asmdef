@@ -1,0 +1,6 @@
+{
+  "name": "Zombs.Editor",
+  "rootNamespace": "Zombs",
+  "references": ["Zombs.Runtime"],
+  "includePlatforms": ["Editor"]
+}

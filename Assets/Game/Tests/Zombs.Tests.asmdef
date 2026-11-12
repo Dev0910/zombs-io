@@ -1,0 +1,7 @@
+{
+  "name": "Zombs.Tests",
+  "rootNamespace": "Zombs",
+  "references": ["Zombs.Runtime"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}
