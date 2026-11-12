@@ -8,32 +8,26 @@ namespace Zombs
 {
     public sealed partial class GameSession
     {
-        private enum Checkpoint { Title, Wood, ToStone, Stone, ToBase, Placement, Defense, Loss, Recovery, Fresh, Finished }
+        private enum Checkpoint
+        {
+            Title, Preview, Wood, ToStone, Stone, Build, FirstNight, ToIron, Iron, Return,
+            Smelt, Assemble, Upgrade, Miner, SecondNight, Outage, Refill, BossDefense, Finished
+        }
+
         private sealed class Verification
         {
             public string Directory;
             public float Speed, StageAge, ServiceClock;
             public Checkpoint Stage;
-            public int LastLoggedWave, Deaths;
-            public bool BossSeen, BossCaptured, BossReward, FirstWaveCaptured, RealTimeBoss;
+            public int Waypoint;
+            public bool Captured, PoisonSeen, FirstBoss;
         }
 
         private Verification verification;
-        private static readonly (BuildingKind Kind, int X, int Y)[] Blueprint =
-        {
-            (BuildingKind.Generator, -4, 0),
-            (BuildingKind.Bomb, -6, 0), (BuildingKind.Bomb, -2, 0),
-            (BuildingKind.Bomb, -4, 2), (BuildingKind.Bomb, -4, -2),
-            (BuildingKind.Bomb, -6, 2), (BuildingKind.Bomb, -6, -2),
-            (BuildingKind.Arrow, -2, 2), (BuildingKind.Arrow, -2, -2),
-            (BuildingKind.Arrow, -8, 0), (BuildingKind.Arrow, -8, -2),
-            (BuildingKind.Arrow, -6, 4), (BuildingKind.Arrow, -6, -4),
-            (BuildingKind.Smelter, -4, 4), (BuildingKind.Smelter, -4, -4),
-            (BuildingKind.Smelter, -2, 4), (BuildingKind.Smelter, -2, -4),
-            (BuildingKind.Smelter, 0, 2), (BuildingKind.Smelter, 0, 4),
-            (BuildingKind.Smelter, -8, 2), (BuildingKind.Smelter, -8, -4),
-            (BuildingKind.Miner, -2, 6)
-        };
+        private static readonly Vector2 Site = new(-3, 0);
+        private static readonly Vector2[] DefenseSites = { new(-5, 2), new(-1, 2), new(-3, -2), new(-5, -2) };
+        private static readonly Vector2[] OreRoute = { new(1, 1.15f), new(7, 2), new(9, -4), new(12, -7) };
+        private static readonly Vector2[] HomeRoute = { new(9, -4), new(7, 2), new(1, 1.15f), Vector2.zero };
 
         private void Start()
         {
@@ -42,11 +36,10 @@ namespace Zombs
             if (index < 0 || index + 1 >= args.Length) return;
             var output = Path.GetFullPath(args[index + 1]);
             Directory.CreateDirectory(output);
+            bool firstBoss = args.Contains("-zombs-first-boss");
             verification = new Verification
             {
-                Directory = output,
-                Speed = args.Contains("-zombs-fast") || args.Contains("-zombs-first-boss") ? 30 : 1,
-                RealTimeBoss = args.Contains("-zombs-first-boss")
+                Directory = output, Speed = args.Contains("-zombs-fast") || firstBoss ? 20 : 1, FirstBoss = firstBoss
             };
             VerificationLog($"Started packaged playthrough at {verification.Speed:0}x.");
         }
@@ -59,201 +52,286 @@ namespace Zombs
             verification.StageAge += frame;
             Vector2 move = Vector2.zero;
             bool attack = false;
-            if (run.Defeated && verification.Stage < Checkpoint.Loss)
-            {
-                SaveVerificationFrame("unexpected-loss");
-                FinishVerification(false, $"Generator lost prematurely at wave {run.Wave}.");
-            }
+            if (verification.Stage != Checkpoint.Finished &&
+                (run.Defeated || run.Dead ||
+                 verification.Stage != Checkpoint.BossDefense && verification.StageAge * verification.Speed > 310 ||
+                 verification.Stage == Checkpoint.BossDefense && verification.StageAge > 250))
+                FinishVerification(false, $"Stopped at {verification.Stage}, player {run.Player}, wave {run.Wave}, health {run.Health:0}, fuel {run.Generator?.Fuel:0}.");
+
             switch (verification.Stage)
             {
                 case Checkpoint.Title:
-                    if (verification.StageAge < 1.5f) return true;
-                    if (verification.StageAge - frame < 1.5f) SaveVerificationFrame("01-title");
-                    if (verification.StageAge < 1.75f) return true;
+                    if (!CaptureAfterDelay(.7f, "01-title")) return true;
                     intro = false;
                     profile.nickname = "Player";
                     Attach(new RunState(catalog, 5238));
-                    AdvanceVerification(Checkpoint.Wood, "New empty run, seed 5238.");
+                    SelectBuild(BuildingKind.Generator);
+                    cursor = Site;
+                    AdvanceVerification(Checkpoint.Preview, "New run, seed 5238.");
                     return true;
+                case Checkpoint.Preview:
+                    if (!CaptureAfterDelay(.7f, "02-generator-preview")) return true;
+                    WorldClick();
+                    if (run.Generator == null)
+                    {
+                        FinishVerification(false, $"Generator placement failed at {Site}.");
+                        break;
+                    }
+                    AdvanceVerification(Checkpoint.Wood, "Placed a fueled generator through the placement tool.");
+                    break;
                 case Checkpoint.Wood:
                     cursor = run.Nodes[0].Position;
                     attack = true;
-                    if (run.Resources.wood >= 245)
-                        AdvanceVerification(Checkpoint.ToStone, $"Gathered {run.Resources.wood:0} wood with the pickaxe.");
+                    if (run.Resources.wood >= 150) AdvanceVerification(Checkpoint.ToStone, $"Gathered {run.Resources.wood:0} wood.");
                     break;
                 case Checkpoint.ToStone:
-                    if (run.Player.y < 4.4f) move = Vector2.up;
-                    else AdvanceVerification(Checkpoint.Stone, "Reached the stone node.");
+                    if (GuideTo(new Vector2(0, 4.15f), elapsed, out move))
+                        AdvanceVerification(Checkpoint.Stone, "Reached the starter stone.");
                     break;
                 case Checkpoint.Stone:
                     cursor = run.Nodes[1].Position;
                     attack = true;
-                    if (run.Resources.stone >= 245)
-                    {
-                        SaveVerificationFrame("02-gathering");
-                        AdvanceVerification(Checkpoint.ToBase, $"Gathered {run.Resources.stone:0} stone with the pickaxe.");
-                    }
+                    if (run.Resources.stone >= 100) AdvanceVerification(Checkpoint.Build, $"Gathered {run.Resources.stone:0} stone.");
                     break;
-                case Checkpoint.ToBase:
-                    if (run.Player.y > .12f)
+                case Checkpoint.Build:
+                    if (!GuideTo(Vector2.zero, elapsed, out move)) break;
+                    foreach (var position in DefenseSites)
+                        run.Place(BuildingKind.Arrow, position, 0, out _);
+                    if (run.Count(BuildingKind.Arrow) < DefenseSites.Length)
                     {
-                        move = Vector2.down * Mathf.Min(1, run.Player.y / (elapsed * catalog.playerSpeed));
+                        FinishVerification(false, "Opening tower placements did not fit.");
                         break;
                     }
-                    SelectBuild(BuildingKind.Generator);
-                    cursor = new Vector2(-4, 0);
-                    AdvanceVerification(Checkpoint.Placement, "Generator placement preview.");
+                    run.Refuel(run.Generator, ResourceKind.Wood);
+                    run.Refuel(run.Generator, ResourceKind.Wood);
+                    selected = run.Generator;
+                    SaveVerificationFrame("03-generator-controls");
+                    AdvanceVerification(Checkpoint.FirstNight, $"Built four towers and refueled, with {run.Generator.Fuel:0}s fuel before night.");
                     break;
-                case Checkpoint.Placement:
-                    if (verification.StageAge < .75f) return true;
-                    if (verification.StageAge - frame < .75f) SaveVerificationFrame("03-placement-preview");
-                    if (verification.StageAge < .95f) return true;
-                    ResetSelection();
-                    BuildBlueprint();
-                    if (run.Generator == null || run.Count(BuildingKind.Bomb) < 4 || run.Count(BuildingKind.Smelter) < 4)
+                case Checkpoint.FirstNight:
+                    if (!verification.Captured && run.Enemies.Any(enemy =>
+                        enemy.Health > 0 && Mathf.Abs(enemy.Position.y - run.Player.y) < 9 &&
+                        Mathf.Abs(enemy.Position.x - run.Player.x) < 13))
                     {
-                        FinishVerification(false, "Could not place the opening base.");
-                        break;
-                    }
-                    run.Buy(ItemKind.Carl);
-                    AdvanceVerification(Checkpoint.Defense, $"Placed {run.Buildings.Count} structures with earned resources.");
-                    break;
-                case Checkpoint.Defense:
-                    if (verification.RealTimeBoss && verification.Speed > 1 && run.Wave == catalog.firstBossWave - 1 && !run.Night)
-                    {
-                        verification.Speed = 1;
-                        VerificationLog("Switched to normal speed before the first boss night.");
-                    }
-                    if (run.Wave > verification.LastLoggedWave)
-                    {
-                        verification.LastLoggedWave = run.Wave;
-                        VerificationLog($"Wave {run.Wave}, tier {run.Generator.Tier}, {run.Buildings.Count} buildings, gold {run.Resources.gold:0}.");
-                    }
-                    if (run.Wave == 1 && run.Enemies.Count > 0 && !verification.FirstWaveCaptured)
-                    {
-                        verification.FirstWaveCaptured = true;
+                        selected = null;
+                        verification.Captured = true;
                         SaveVerificationFrame("04-first-wave");
                     }
-                    if (run.Wave == catalog.firstBossWave && !verification.BossSeen && run.Enemies.Any(enemy => enemy.Boss))
+                    if (run.Wave == 1 && !run.Night)
                     {
-                        verification.BossSeen = true;
-                        VerificationLog("Observed first boss on the field.");
+                        run.Place(BuildingKind.Smelter, new Vector2(-1, -2), 0, out _);
+                        AdvanceVerification(Checkpoint.ToIron, $"Survived night one, score {run.Score}.");
                     }
-                    if (verification.BossSeen && !verification.BossCaptured &&
-                        run.Enemies.Any(enemy => enemy.Boss && enemy.Health > 0 && OnScreen(enemy.Position)))
+                    break;
+                case Checkpoint.ToIron:
+                    if (FollowRoute(OreRoute, elapsed, out move))
+                        AdvanceVerification(Checkpoint.Iron, "Reached the iron vein.");
+                    break;
+                case Checkpoint.Iron:
+                    var ore = run.Nodes.Where(node => node.Kind == ResourceKind.Iron && !node.Depleted)
+                        .OrderBy(node => (node.Position - run.Player).sqrMagnitude).First();
+                    cursor = ore.Position;
+                    move = (cursor - run.Player).normalized;
+                    attack = true;
+                    if (run.Breath <= 0 && !verification.PoisonSeen)
                     {
-                        verification.BossCaptured = true;
-                        SaveVerificationFrame("05-boss-wave");
+                        verification.PoisonSeen = true;
+                        SaveVerificationFrame("05-poison-exposure");
                     }
-                    if (verification.BossSeen && !verification.BossReward && run.Resources.tokens > 0)
+                    if (run.Resources.iron >= 24)
+                        AdvanceVerification(Checkpoint.Return, $"Mined {run.Resources.iron:0} ore. Poison observed {verification.PoisonSeen}.");
+                    break;
+                case Checkpoint.Return:
+                    if (FollowRoute(HomeRoute, elapsed, out move))
                     {
-                        verification.BossReward = true;
-                        VerificationLog($"Earned {run.Resources.tokens} boss tokens.");
-                    }
-                    if (verification.BossSeen && !run.Night && run.Wave == catalog.firstBossWave)
-                    {
-                        if (!verification.BossReward)
+                        if (!run.CanBreathe)
                         {
-                            FinishVerification(false, "Survived the first boss wave without a boss reward.");
+                            FinishVerification(false, "Returning to the generator did not restore breathable air.");
                             break;
                         }
-                        AdvanceVerification(Checkpoint.Loss, $"Survived the first boss wave with score {run.Score}.");
-                        break;
-                    }
-                    if (run.Dead)
-                    {
-                        verification.Deaths++;
-                        run.Respawn();
-                    }
-                    verification.ServiceClock += elapsed;
-                    if (verification.ServiceClock >= 1.5f)
-                    {
-                        verification.ServiceClock = 0;
-                        BuildBlueprint();
-                        ServiceBase();
+                        AdvanceVerification(Checkpoint.Smelt, "Returned to breathable air.");
                     }
                     break;
-                case Checkpoint.Loss:
-                    foreach (var building in run.Buildings.ToArray())
-                        if (building != run.Generator) run.Sell(building);
-                    if (run.Dead && !run.Defeated)
+                case Checkpoint.Smelt:
+                    selected = run.At(new Vector2(-1, -2));
+                    if (selected == null)
                     {
-                        if (verification.Deaths == 0)
+                        FinishVerification(false, "Smelter placement failed.");
+                        break;
+                    }
+                    run.Collect(selected);
+                    run.QueueProduction(selected);
+                    if (run.Resources.plate >= 12)
+                    {
+                        run.Place(BuildingKind.Assembler, new Vector2(-1, -4), 0, out _);
+                        AdvanceVerification(Checkpoint.Assemble, "Smelted and collected 12 plates, then built an assembler.");
+                    }
+                    break;
+                case Checkpoint.Assemble:
+                    selected = run.At(new Vector2(-1, -4));
+                    if (selected == null)
+                    {
+                        FinishVerification(false, "Assembler placement failed.");
+                        break;
+                    }
+                    run.Collect(selected);
+                    run.QueueProduction(selected);
+                    if (!verification.Captured && selected.Queued > 0 && run.Resources.parts >= 1)
+                    {
+                        verification.Captured = true;
+                        SaveVerificationFrame("06-assembly");
+                    }
+                    if (run.Resources.parts >= 9)
+                        AdvanceVerification(Checkpoint.Upgrade, $"Collected {run.Resources.parts:0} assembled parts.");
+                    break;
+                case Checkpoint.Upgrade:
+                    if (!verification.Captured)
+                    {
+                        if (run.Upgrade(run.Generator, false) != 1)
                         {
-                            verification.Deaths++;
-                            SaveVerificationFrame("06-player-death");
-                            VerificationLog("Player death left the stash standing.");
+                            FinishVerification(false, "Could not upgrade the generator with assembled parts.");
+                            break;
                         }
-                    }
-                    if (run.Defeated)
-                    {
-                        if (verification.StageAge < 1.5f) return true;
-                        SaveVerificationFrame("07-stash-loss");
-                        AdvanceVerification(Checkpoint.Recovery, $"Generator loss recorded at wave {run.Wave}.");
-                    }
-                    break;
-                case Checkpoint.Recovery:
-                    if (verification.StageAge < .75f) return true;
-                    RestartAfterLoss();
-                    if (run.Dead || run.Defeated || run.Generator != null || run.Wave != 0 || run.ItemTier(ItemKind.Pickaxe) != 1)
-                    {
-                        FinishVerification(false, "Respawn after stash loss did not reset the base.");
+                        selected = run.Generator;
+                        verification.Captured = true;
+                        SaveVerificationFrame("07-upgraded-generator");
                         break;
                     }
-                    AdvanceVerification(Checkpoint.Fresh, "Respawn restored player control with a clean base.");
-                    break;
-                case Checkpoint.Fresh:
-                    if (verification.StageAge < .8f) return true;
-                    Attach(new RunState(catalog, 5239));
-                    if (run.Resources.wood != 0 || run.Resources.stone != 0 || run.Resources.gold != 0)
+                    if (!run.Place(BuildingKind.Miner, new Vector2(1, 3), 0, out var result))
                     {
-                        FinishVerification(false, "The fresh run inherited an old balance.");
+                        FinishVerification(false, $"Could not place unlocked Miner: {result}.");
                         break;
                     }
-                    FinishVerification(true, "Passed gathering, construction, waves, boss reward, stash loss, respawn and clean restart.");
+                    selected = run.At(new Vector2(1, 3));
+                    run.Refuel(selected, ResourceKind.Wood);
+                    AdvanceVerification(Checkpoint.Miner, $"Upgraded to radius {run.OxygenRadius:0}, then fueled a miner.");
+                    break;
+                case Checkpoint.Miner:
+                    if (!verification.Captured && selected.Stored >= .75f)
+                    {
+                        verification.Captured = true;
+                        SaveVerificationFrame("08-miner");
+                        break;
+                    }
+                    if (selected.Stored >= 1)
+                    {
+                        run.Collect(selected);
+                        selected = null;
+                        AdvanceVerification(Checkpoint.SecondNight, "Collected mined stone.");
+                    }
+                    break;
+                case Checkpoint.SecondNight:
+                    if (run.Wave >= 2 && !run.Night)
+                        AdvanceVerification(Checkpoint.Outage, $"Survived night two, score {run.Score}.");
+                    break;
+                case Checkpoint.Outage:
+                    if (!run.GeneratorOnline && !run.CanBreathe)
+                    {
+                        selected = run.Generator;
+                        if (!CaptureAfterDelay(.55f, "09-fuel-outage")) break;
+                        if (!run.Refuel(run.Generator, ResourceKind.Wood))
+                        {
+                            FinishVerification(false, "Could not restart an empty generator with wood.");
+                            break;
+                        }
+                        AdvanceVerification(Checkpoint.Refill, "Restored oxygen from an empty tank.");
+                    }
+                    break;
+                case Checkpoint.Refill:
+                    if (!run.CanBreathe || !run.GeneratorOnline)
+                        FinishVerification(false, "Fuel did not restore the oxygen zone.");
+                    else if (run.Breath >= catalog.breathSeconds)
+                    {
+                        if (verification.FirstBoss) SetUpBossVerification();
+                        else FinishVerification(true, "Gathered and defended twice, processed parts, expanded oxygen, mined automatically, and recovered from outage.");
+                    }
+                    break;
+                case Checkpoint.BossDefense:
+                    if (run.Wave == catalog.firstBossWave - 1 && !run.Night && verification.Speed > 1)
+                    {
+                        verification.Speed = 1;
+                        VerificationLog("Switched to normal speed on the day before the first boss.");
+                    }
+                    if (!verification.Captured && run.Enemies.Any(enemy =>
+                        enemy.Boss && enemy.Health > 0 && (enemy.Position - run.Player).sqrMagnitude < 10 * 10))
+                    {
+                        verification.Captured = true;
+                        SaveVerificationFrame("10-first-boss");
+                    }
+                    if (run.Wave == catalog.firstBossWave && !run.Night)
+                        FinishVerification(run.Resources.tokens >= catalog.bossTokens,
+                            $"Finished the first boss night with {run.Resources.tokens} boss tokens and score {run.Score}.");
                     break;
                 case Checkpoint.Finished:
-                    if (verification.StageAge > 1.4f) Application.Quit();
+                    if (verification.StageAge > 1) Application.Quit();
                     return true;
             }
-            if (!run.Defeated && verification.Stage != Checkpoint.Finished) StepGame(elapsed, move, attack);
+            if (verification.Stage != Checkpoint.Finished)
+            {
+                StepGame(elapsed, move, attack);
+                ServiceVerificationBase(elapsed);
+            }
             return true;
         }
 
-        private void BuildBlueprint()
+        private bool GuideTo(Vector2 target, float elapsed, out Vector2 move)
         {
-            foreach (var entry in Blueprint)
-            {
-                Vector2 point = new(entry.X, entry.Y);
-                if (run.At(point) == null) run.Place(entry.Kind, point, 0, out _);
-            }
+            Vector2 delta = target - run.Player;
+            move = Vector2.ClampMagnitude(delta / Mathf.Max(RunState.TickSeconds, elapsed) / catalog.playerSpeed, 1);
+            return delta.sqrMagnitude <= .10f * .10f;
         }
 
-        private void ServiceBase()
+        private bool FollowRoute(Vector2[] route, float elapsed, out Vector2 move)
         {
-            if (run.Generator.Tier < 5) run.Upgrade(run.Generator, false);
-            if (run.ItemTier(ItemKind.Bow) == 0 && run.Resources.gold >= 100)
-                run.Buy(ItemKind.Bow);
+            if (GuideTo(route[verification.Waypoint], elapsed, out move)) verification.Waypoint++;
+            return verification.Waypoint == route.Length;
+        }
+
+        private void ServiceVerificationBase(float elapsed)
+        {
+            if (run.Generator == null || verification.Stage < Checkpoint.FirstNight) return;
+            verification.ServiceClock += elapsed;
+            if (verification.ServiceClock < .5f) return;
+            verification.ServiceClock = 0;
+            if ((verification.Stage < Checkpoint.Outage || verification.Stage == Checkpoint.BossDefense) && run.Generator.Fuel < 80)
+                run.Refuel(run.Generator, verification.Stage == Checkpoint.BossDefense ? ResourceKind.Coal : ResourceKind.Wood);
             foreach (var building in run.Buildings)
+                if (building.Health < building.MaximumHealth * .65f) run.Repair(building);
+        }
+
+        private void SetUpBossVerification()
+        {
+            Attach(new RunState(catalog, 5238, new Price(wood: 400, stone: 400, coal: 70, parts: 80)));
+            if (!run.Place(BuildingKind.Generator, Site, 0, out _))
             {
-                if (building.Health < building.MaximumHealth * .42f) run.Repair(building);
-                if (building.Kind == BuildingKind.Miner)
-                {
-                    if (building.Fuel < 100) run.Deposit(building);
-                    if (building.Stored >= 16) run.Collect(building);
-                }
-                if (building != run.Generator && building.Kind != BuildingKind.Miner &&
-                    (SpriteArt.IsTower(building.Kind) || building.Kind == BuildingKind.Smelter) &&
-                    run.Resources.wood >= 22 && run.Resources.stone >= 22)
-                    run.Upgrade(building, false);
+                FinishVerification(false, "Could not place the generator for the boss scenario.");
+                return;
             }
-            if (run.Health < catalog.playerHealth * .4f) run.HealPlayer();
+            for (int tier = 1; tier < 4; tier++) run.Upgrade(run.Generator, false);
+            foreach (var position in DefenseSites)
+                run.Place(BuildingKind.Arrow, position, 0, out _);
+            run.Place(BuildingKind.Bomb, new Vector2(-3, 2), 0, out _);
+            run.Place(BuildingKind.Bomb, new Vector2(-1, -2), 0, out _);
+            foreach (var building in run.Buildings.Where(building => building.Kind != BuildingKind.Generator))
+                for (int tier = 1; tier < 3; tier++) run.Upgrade(building, false);
+            AdvanceVerification(Checkpoint.BossDefense, "Opening and fuel recovery passed. Started a separate first-boss scenario with supplied build materials.");
+        }
+
+        private bool CaptureAfterDelay(float delay, string filename)
+        {
+            if (verification.Captured) return true;
+            if (verification.StageAge < delay) return false;
+            SaveVerificationFrame(filename);
+            verification.Captured = true;
+            return false;
         }
 
         private void AdvanceVerification(Checkpoint checkpoint, string message)
         {
             verification.Stage = checkpoint;
             verification.StageAge = 0;
+            verification.Waypoint = 0;
+            verification.Captured = false;
             VerificationLog(message);
         }
 
@@ -264,16 +342,10 @@ namespace Zombs
         }
 
         private void VerificationLog(string message) =>
-            File.AppendAllText(Path.Combine(verification.Directory, "playthrough.log"), $"{DateTimeOffset.Now:O} {message}{Environment.NewLine}");
+            File.AppendAllText(Path.Combine(verification.Directory, "playthrough.log"), $"{Time.unscaledTime:0.00} {message}{Environment.NewLine}");
 
         private void SaveVerificationFrame(string name) =>
             ScreenCapture.CaptureScreenshot(Path.Combine(verification.Directory, name + ".png"));
-
-        private bool OnScreen(Vector2 point)
-        {
-            Vector3 screen = sceneCamera.WorldToViewportPoint(point);
-            return screen.x > .08f && screen.x < .92f && screen.y > .12f && screen.y < .90f;
-        }
     }
 }
 #endif

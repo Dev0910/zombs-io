@@ -42,6 +42,64 @@ namespace Zombs
             a.Lobed(57, 63, 32, 4, .032f, C(188, 189, 193));
         });
 
+        public static Sprite Deposit(ResourceKind kind) => kind switch
+        {
+            ResourceKind.Wood => Tree,
+            ResourceKind.Stone => Rock,
+            ResourceKind.Iron => Get("iron-ore", a =>
+            {
+                a.Poly(Ink, 5, 57, 20, 28, 62, 6, 102, 18, 123, 59, 103, 102, 60, 121, 24, 99);
+                a.Poly(C(125, 92, 79), 13, 57, 27, 34, 65, 15, 95, 26, 114, 59, 95, 96, 61, 112, 31, 92);
+                a.Stroke(28, 50, 56, 79, 15, C(213, 143, 102));
+                a.Stroke(57, 57, 86, 88, 15, C(190, 112, 79));
+                a.Stroke(85, 53, 99, 69, 10, C(213, 143, 102));
+            }),
+            _ => Get("coal", a =>
+            {
+                a.Poly(Ink, 4, 48, 18, 24, 62, 18, 96, 9, 120, 38, 112, 88, 78, 120, 43, 106, 12, 88);
+                a.Poly(C(68, 71, 81), 13, 50, 24, 31, 65, 26, 93, 18, 112, 41, 104, 84, 76, 111, 44, 97, 21, 82);
+                a.Poly(C(112, 114, 127), 22, 65, 44, 95, 67, 84, 52, 55);
+                a.Poly(C(91, 94, 109), 67, 56, 81, 84, 105, 70, 109, 43, 88, 34);
+            })
+        };
+
+        public static Sprite MapDeposit(ResourceKind kind) => Get($"map-{kind}", a =>
+        {
+            switch (kind)
+            {
+                case ResourceKind.Stone:
+                    a.Disc(64, 64, 55, Ink);
+                    a.Disc(64, 64, 43, C(192, 195, 204));
+                    break;
+                case ResourceKind.Iron:
+                    a.Poly(Ink, 64, 2, 126, 64, 64, 126, 2, 64);
+                    a.Poly(C(234, 155, 104), 64, 17, 111, 64, 64, 111, 17, 64);
+                    break;
+                case ResourceKind.Coal:
+                    a.Box(8, 8, 120, 120, 1, C(194, 199, 219));
+                    a.Box(19, 19, 109, 109, 1, Ink);
+                    break;
+            }
+        });
+
+        public static Sprite AirFill => Get("air-fill", a => a.Disc(64, 64, 63.8f, Paper), 512);
+
+        public static Sprite AirBoundary(bool dashed) => Get(dashed ? "air-dashed" : "air-edge", a =>
+        {
+            if (!dashed)
+            {
+                a.Annulus(64, 64, 63.8f, .75f, Paper);
+                return;
+            }
+            for (int index = 0; index < 48; index++)
+            {
+                float start = index * Mathf.PI * 2 / 48;
+                float end = start + .062f;
+                a.Stroke(64 + 63 * Mathf.Cos(start), 64 + 63 * Mathf.Sin(start),
+                    64 + 63 * Mathf.Cos(end), 64 + 63 * Mathf.Sin(end), .8f, Paper);
+            }
+        }, 512);
+
         public static Sprite Body => Get("body", a => a.Ring(64, 64, 62, 8, Paper));
         public static Sprite Hand => Body;
         public static Sprite Hat => Get("hat", a =>
@@ -87,25 +145,30 @@ namespace Zombs
             }
             if (kind == BuildingKind.Generator)
             {
-                for (int row = 0; row < 4; row++)
-                for (int column = 0; column < 4; column++)
-                {
-                    float x = 28 + column * 23 + (row % 2) * 6;
-                    float y = 29 + row * 22;
-                    a.Ring(x, y, 17, 6, row % 2 == 0 ? Gold : C(236, 162, 73));
-                }
-                a.Ring(67, 65, 18, 6, C(255, 199, 102));
+                a.Box(18, 22, 110, 103, 12, Ink);
+                a.Box(25, 28, 103, 96, 9, Steel);
+                a.Ring(64, 62, 33, 7, C(52, 100, 107));
+                a.Disc(64, 62, 21, C(123, 225, 218));
+                a.Disc(58, 69, 8, C(208, 252, 241));
+                a.Box(25, 99, 103, 111, 3, C(104, 185, 177));
             }
             if (kind == BuildingKind.Smelter)
             {
-                for (int i = 0; i < 8; i++)
-                {
-                    float angle = i * Mathf.PI / 4;
-                    a.Ring(64 + Mathf.Cos(angle) * 48, 64 + Mathf.Sin(angle) * 48, 14, 6, C(255, 153, 40));
-                }
-                a.Ring(64, 64, 44, 8, Dark(material, .82f));
-                a.Ring(64, 64, 33, 6, C(87, 87, 94));
-                a.Disc(64, 64, 23, Steel);
+                a.Box(18, 20, 110, 108, 10, Ink);
+                a.Box(25, 27, 103, 101, 7, Steel);
+                a.Box(34, 44, 94, 87, 6, Ink);
+                a.Poly(C(238, 134, 63), 40, 50, 50, 70, 61, 62, 72, 80, 89, 50);
+                a.Box(39, 31, 89, 39, 2, C(175, 180, 183));
+            }
+            if (kind == BuildingKind.Assembler)
+            {
+                a.Box(17, 20, 111, 107, 9, Ink);
+                a.Box(24, 27, 104, 99, 6, SteelLight);
+                a.Box(32, 36, 96, 59, 3, Steel);
+                a.Box(49, 42, 80, 53, 4, C(178, 213, 225));
+                a.Stroke(35, 82, 65, 73, 15, Ink);
+                a.Stroke(37, 82, 63, 74, 8, C(221, 160, 87));
+                a.Stroke(66, 74, 78, 63, 9, C(221, 160, 87));
             }
             if (kind == BuildingKind.Miner)
             {
@@ -296,13 +359,13 @@ namespace Zombs
 
         public static bool IsTower(BuildingKind kind) => kind >= BuildingKind.Arrow && kind <= BuildingKind.Mage;
 
-        private static Sprite Get(string key, Action<Canvas> draw)
+        private static Sprite Get(string key, Action<Canvas> draw, int resolution = 128)
         {
             if (Sprites.TryGetValue(key, out var sprite)) return sprite;
-            var canvas = new Canvas();
+            var canvas = new Canvas(resolution);
             draw(canvas);
             var texture = canvas.Texture(key);
-            sprite = Sprite.Create(texture, new Rect(0, 0, 128, 128), new Vector2(.5f, .5f), 128, 0, SpriteMeshType.FullRect);
+            sprite = Sprite.Create(texture, new Rect(0, 0, resolution, resolution), new Vector2(.5f, .5f), resolution, 0, SpriteMeshType.FullRect);
             sprite.name = key;
             Sprites.Add(key, sprite);
             return sprite;
@@ -313,8 +376,17 @@ namespace Zombs
 
         private sealed class Canvas
         {
-            private const int Size = 256;
-            private readonly Color32[] pixels = new Color32[Size * Size];
+            private readonly int resolution, size;
+            private readonly float samplesPerUnit;
+            private readonly Color32[] pixels;
+
+            public Canvas(int resolution)
+            {
+                this.resolution = resolution;
+                size = resolution * 2;
+                samplesPerUnit = size / 128f;
+                pixels = new Color32[size * size];
+            }
 
             public void Disc(float x, float y, float radius, Color32 color) =>
                 Paint(x - radius, y - radius, x + radius, y + radius, color,
@@ -389,24 +461,24 @@ namespace Zombs
 
             private void Paint(float left, float bottom, float right, float top, Color32 color, Func<float, float, bool> covers)
             {
-                int lastX = Mathf.Min(Size, Mathf.CeilToInt(right * 2));
-                int lastY = Mathf.Min(Size, Mathf.CeilToInt(top * 2));
-                for (int y = Mathf.Max(0, Mathf.FloorToInt(bottom * 2)); y < lastY; y++)
-                for (int x = Mathf.Max(0, Mathf.FloorToInt(left * 2)); x < lastX; x++)
-                    if (covers((x + .5f) / 2, (y + .5f) / 2)) pixels[y * Size + x] = color;
+                int lastX = Mathf.Min(size, Mathf.CeilToInt(right * samplesPerUnit));
+                int lastY = Mathf.Min(size, Mathf.CeilToInt(top * samplesPerUnit));
+                for (int y = Mathf.Max(0, Mathf.FloorToInt(bottom * samplesPerUnit)); y < lastY; y++)
+                for (int x = Mathf.Max(0, Mathf.FloorToInt(left * samplesPerUnit)); x < lastX; x++)
+                    if (covers((x + .5f) / samplesPerUnit, (y + .5f) / samplesPerUnit)) pixels[y * size + x] = color;
             }
 
             public Texture2D Texture(string name)
             {
-                var result = new Color32[128 * 128];
-                for (int y = 0; y < 128; y++)
-                for (int x = 0; x < 128; x++)
+                var result = new Color32[resolution * resolution];
+                for (int y = 0; y < resolution; y++)
+                for (int x = 0; x < resolution; x++)
                 {
                     int red = 0, green = 0, blue = 0, alpha = 0;
                     for (int dy = 0; dy < 2; dy++)
                     for (int dx = 0; dx < 2; dx++)
                     {
-                        var p = pixels[(y * 2 + dy) * Size + x * 2 + dx];
+                        var p = pixels[(y * 2 + dy) * size + x * 2 + dx];
                         if (p.a == 0) continue;
                         red += p.r;
                         green += p.g;
@@ -414,9 +486,9 @@ namespace Zombs
                         alpha++;
                     }
                     if (alpha > 0)
-                        result[y * 128 + x] = new Color32((byte)(red / alpha), (byte)(green / alpha), (byte)(blue / alpha), (byte)(255 * alpha / 4));
+                        result[y * resolution + x] = new Color32((byte)(red / alpha), (byte)(green / alpha), (byte)(blue / alpha), (byte)(255 * alpha / 4));
                 }
-                var texture = new Texture2D(128, 128, TextureFormat.RGBA32, false)
+                var texture = new Texture2D(resolution, resolution, TextureFormat.RGBA32, false)
                 {
                     name = name, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear
                 };

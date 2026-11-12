@@ -12,6 +12,9 @@ namespace Zombs
         private static readonly Color TextColor = new(.96f, .97f, .92f);
         private static readonly Color MutedText = new(.76f, .81f, .69f);
         private static readonly Color BrightGold = new(1, .76f, .35f);
+        private static readonly Color Air = new(.31f, .73f, .68f);
+        private static readonly Color AirBar = new(.16f, .41f, .38f);
+        private static readonly Color Warning = new(.59f, .34f, .11f);
         private static readonly Color Green = new(.33f, .55f, .025f);
         private static readonly Color Red = new(.66f, .19f, .18f);
         private static readonly Color Purple = new(.50f, .43f, .83f);
@@ -31,11 +34,13 @@ namespace Zombs
         private float Width => Screen.width / Scale;
         private float Height => Screen.height / Scale;
         private Vector2 Mouse => new(Input.mousePosition.x / Scale, (Screen.height - Input.mousePosition.y) / Scale);
-        private Rect ResourcesRect => new(Width - 240, Height - 180, 220, 104);
+        private Rect AirRect => new(20, 20, 204, 62);
+        private Rect ResourcesRect => new(Width - 240, Height - 214, 220, 136);
+        private const int BuildSlots = (int)BuildingKind.Assembler + 1;
         private Rect MapRect => new(20, Height - 159, 140, 139);
         private Rect ClockRect => new(20, Height - 205, 140, 25);
-        private float BuildSlotSize => Mathf.Min(56, (Width - 420 - 80) / 11);
-        private float BuildSlotStart => (Width - BuildSlotStride * 11 + 8) * .5f - 40;
+        private float BuildSlotSize => Mathf.Min(56, (Width - 500) / BuildSlots);
+        private float BuildSlotStart => (Width - BuildSlotStride * BuildSlots + 8) * .5f - 40;
         private float BuildSlotStride => BuildSlotSize + 8;
         private Rect BuildRect(int index) => new(BuildSlotStart + index * BuildSlotStride, Height - 20 - BuildSlotSize,
             BuildSlotSize, BuildSlotSize);
@@ -49,11 +54,11 @@ namespace Zombs
         {
             Vector2 point = screen / Scale;
             if (settings || shop || intro || run.Dead || run.Defeated) return true;
-            if (ResourcesRect.Contains(point) || MapRect.Contains(point) || ClockRect.Contains(point) ||
+            if (AirRect.Contains(point) || ResourcesRect.Contains(point) || MapRect.Contains(point) || ClockRect.Contains(point) ||
                 new Rect(Width - 240, Height - 58, 220, 38).Contains(point) ||
                 SideRect(false, 0).Contains(point) || SideRect(false, 1).Contains(point) ||
                 SideRect(true, 0).Contains(point) || SideRect(true, 1).Contains(point)) return true;
-            for (int i = 0; i < 11; i++)
+            for (int i = 0; i < BuildSlots; i++)
                 if ((i != 10 || run.Generator == null) && BuildRect(i).Contains(point)) return true;
             for (int i = 0; i < 7; i++)
                 if (WeaponRect(i).Contains(point)) return true;
@@ -81,6 +86,17 @@ namespace Zombs
                 DrawSideButtons();
                 DrawMap();
                 DrawNotice();
+                if (!placing.HasValue && !BlocksWorld(Mouse * Scale))
+                {
+                    var node = run.ResourceAt(cursor);
+                    if (node != null)
+                    {
+                        string material = RunState.ResourceName(node.Kind);
+                        string amount = float.IsPositiveInfinity(node.Remaining) ? "Renewable" : Number(node.Remaining);
+                        Tooltip(new Rect(Mathf.Clamp(Mouse.x + 15, 12, Width - 178), Mouse.y + 16, 166, 29),
+                            $"{material}  |  {amount}");
+                    }
+                }
                 if (selected != null && !shop && !settings) DrawStructure();
                 if (shop)
                 {
@@ -115,21 +131,24 @@ namespace Zombs
             {
                 alignment = TextAnchor.MiddleLeft, font = font, fontSize = 17, padding = new RectOffset(11, 10, 0, 0)
             };
+            Text(new Rect(box.x + 16, box.y + 4, 160, 17), "Name", 12, MutedText);
+            Text(new Rect(box.x + 230, box.y + 4, 144, 17), "Map seed (optional)", 12, MutedText);
             GUI.SetNextControlName("Nickname");
-            profile.nickname = GUI.TextField(new Rect(box.x + 16, box.y + 16, 358, 41), profile.nickname ?? "Player", 20, inputStyle);
+            profile.nickname = GUI.TextField(new Rect(box.x + 16, box.y + 22, 200, 38), profile.nickname ?? "Player", 20, inputStyle);
+            seedInput = GUI.TextField(new Rect(box.x + 230, box.y + 22, 144, 38), seedInput, 11, inputStyle);
             if (Button(new Rect(box.x + 16, box.y + 69, 358, 48), "Play", Green, 20) ||
                 (!settings && Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Return))
             {
                 Begin();
-                return;
+                if (!intro) return;
             }
             float cardsY = startY + 152;
             var cards = new Rect(center - 333, cardsY, 666, 185);
             Fill(cards, Panel);
             Text(new Rect(cards.x + 22, cards.y + 13, 330, 31), "How to Play", 21, TextColor, bold: true);
-            Text(new Rect(cards.x + 22, cards.y + 51, 311, 22), "Gather wood and stone with your pickaxe.", 15, MutedText);
-            Text(new Rect(cards.x + 22, cards.y + 80, 311, 22), "Place a Oxygen Generator to establish your base.", 15, MutedText);
-            Text(new Rect(cards.x + 22, cards.y + 109, 311, 22), "Build towers and survive the night.", 15, MutedText);
+            Text(new Rect(cards.x + 22, cards.y + 51, 311, 22), "Gather wood, stone, iron ore, and coal.", 15, MutedText);
+            Text(new Rect(cards.x + 22, cards.y + 80, 311, 22), "Place and fuel an Oxygen Generator (G).", 15, MutedText);
+            Text(new Rect(cards.x + 22, cards.y + 109, 311, 22), "Build defenses before the zombies arrive.", 15, MutedText);
             Text(new Rect(cards.x + 22, cards.y + 138, 311, 22), $"Best wave  {profile.bestWave}    •    Best score  {profile.bestScore:N0}", 15, BrightGold);
             Fill(new Rect(center, cards.y + 18, 1, cards.height - 36), new Color(1, 1, 1, .15f));
             Text(new Rect(center + 22, cards.y + 13, 292, 31), "Controls", 21, TextColor, bold: true);
@@ -137,6 +156,7 @@ namespace Zombs
             Text(new Rect(center + 22, cards.y + 80, 292, 22), "Left click   Gather, attack, or build", 15, MutedText);
             Text(new Rect(center + 22, cards.y + 109, 292, 22), "B   Shop     •     Q   Cycle weapons", 15, MutedText);
             Text(new Rect(center + 22, cards.y + 138, 292, 22), "Space   Auto-attack     •     Esc   Cancel", 15, MutedText);
+            DrawNotice(false);
             if (Button(new Rect(Width - 106, 20, 86, 34), "Settings", Slot, 14)) settings = true;
         }
 
@@ -177,19 +197,48 @@ namespace Zombs
             Text(new Rect(score.x + 133, score.y + 23, 104, 20), run.Score.ToString("N0"), 14, TextColor, TextAnchor.MiddleRight);
             Text(new Rect(score.x + 237, score.y + 23, 48, 20), WaveText, 14, TextColor, TextAnchor.MiddleRight);
 
+            DrawOxygenStatus();
             Rect rect = ResourcesRect;
             Fill(rect, Panel);
-            var price = run.Resources;
-            Resource(new Rect(rect.x, rect.y, 110, 34), "WOOD", Number(price.wood));
-            Resource(new Rect(rect.x + 110, rect.y, 110, 34), "STONE", Number(price.stone));
-            Resource(new Rect(rect.x, rect.y + 34, 110, 34), "GOLD", Number(price.gold));
-            Resource(new Rect(rect.x + 110, rect.y + 34, 110, 34), "TOKENS", price.tokens.ToString());
-            Resource(new Rect(rect.x, rect.y + 68, 220, 34), "WAVE", WaveText);
-            Fill(new Rect(rect.x + 110, rect.y, 1, 68), new Color(1, 1, 1, .10f));
-            Fill(new Rect(rect.x, rect.y + 34, 220, 1), new Color(1, 1, 1, .10f));
-            Fill(new Rect(rect.x, rect.y + 68, 220, 1), new Color(1, 1, 1, .10f));
+            var stock = run.Resources;
+            Resource(new Rect(rect.x, rect.y, 110, 34), "WOOD", Number(stock.wood));
+            Resource(new Rect(rect.x + 110, rect.y, 110, 34), "STONE", Number(stock.stone));
+            Resource(new Rect(rect.x, rect.y + 34, 110, 34), "IRON ORE", Number(stock.iron));
+            Resource(new Rect(rect.x + 110, rect.y + 34, 110, 34), "COAL", Number(stock.coal));
+            Resource(new Rect(rect.x, rect.y + 68, 110, 34), "PLATES", Number(stock.plate));
+            Resource(new Rect(rect.x + 110, rect.y + 68, 110, 34), "PARTS", Number(stock.parts));
+            Resource(new Rect(rect.x, rect.y + 102, 220, 34), "BOSS TOKENS", stock.tokens.ToString());
+            Fill(new Rect(rect.x + 110, rect.y, 1, 102), new Color(1, 1, 1, .10f));
+            for (int index = 1; index <= 3; index++)
+                Fill(new Rect(rect.x, rect.y + index * 34, 220, 1), new Color(1, 1, 1, .10f));
             HudBar(new Rect(Width - 240, Height - 56, 220, 36), run.Health / catalog.playerHealth, new Color(.42f, .65f, .03f), "HEALTH");
             if (run.MaxShield > 0) HudBar(new Rect(rect.x, Height - 74, 220, 14), run.Shield / run.MaxShield, new Color(.32f, .56f, .77f), null);
+        }
+
+        private void DrawOxygenStatus()
+        {
+            Rect rect = AirRect;
+            Fill(rect, DeepPanel);
+            string breath = run.CanBreathe ? "SAFE AIR" : run.Breath > 0 ? $"BREATH  {run.Breath:0.0}s" : "POISON DAMAGE";
+            HudBar(Inset(rect, 3, 3, 26), run.Breath / Mathf.Max(.01f, catalog.breathSeconds),
+                run.CanBreathe ? AirBar : run.Breath > 0 ? Warning : Red, breath);
+            var generator = run.Generator;
+            if (generator == null)
+            {
+                Text(Inset(rect, 9, 31, 25), "G  Place Oxygen Generator", 13, MutedText);
+                return;
+            }
+            string fuel = run.GeneratorOnline ? $"FUEL  {TimeLeft(generator.Fuel)}" : "GENERATOR OFFLINE";
+            if (run.GeneratorOnline && generator.Fuel <= 30)
+                fuel += generator.Fuel > 10 ? "  |  LOW" : "  |  CRITICAL";
+            HudBar(Inset(rect, 3, 32, 26), generator.Fuel / run.FuelCapacity(generator),
+                generator.Fuel > 30 ? AirBar : generator.Fuel > 10 ? Warning : Red, fuel);
+        }
+
+        private static string TimeLeft(float seconds)
+        {
+            int remaining = Mathf.CeilToInt(seconds);
+            return $"{remaining / 60}:{remaining % 60:00}";
         }
 
         private string WaveText => run.Wave == 0 ? "—" : run.Wave.ToString();
@@ -206,8 +255,38 @@ namespace Zombs
             Fill(map, Panel);
             Fill(new Rect(map.center.x, map.y, 1, map.height), new Color(0, 0, 0, .18f));
             Fill(new Rect(map.x, map.center.y, map.width, 1), new Color(0, 0, 0, .18f));
-            if (run.Generator != null) Dot(map, run.Generator.Position, 6, BrightGold);
-            Dot(map, run.Player, 4, new Color(.68f, .62f, .98f));
+            if (Event.current.type == EventType.Repaint)
+            {
+                GUI.BeginGroup(map);
+                var area = new Rect(Vector2.zero, map.size);
+                float scale = area.width / 64;
+                if (run.OxygenRadius > 0)
+                {
+                    Vector2 center = MapPoint(area, run.OxygenCenter, scale);
+                    float diameter = run.OxygenRadius * 2 * scale;
+                    Icon(new Rect(center - Vector2.one * diameter / 2, Vector2.one * diameter),
+                        SpriteArt.AirBoundary(run.Generator == null), 1, Air);
+                }
+                foreach (var node in run.Nodes)
+                {
+                    if (node.Depleted || node.Kind == ResourceKind.Wood) continue;
+                    Vector2 point = MapPoint(area, node.Position, scale);
+                    if (area.Contains(point))
+                        Icon(new Rect(point - Vector2.one * 4, Vector2.one * 8), SpriteArt.MapDeposit(node.Kind), 1, Color.white);
+                }
+                if (run.Generator != null)
+                {
+                    Vector2 home = MapPoint(area, run.Generator.Position, scale);
+                    home.x = Mathf.Clamp(home.x, 5, area.width - 5);
+                    home.y = Mathf.Clamp(home.y, 5, area.height - 5);
+                    Fill(new Rect(home - Vector2.one * 3, Vector2.one * 6), run.GeneratorOnline ? Air : Warning);
+                }
+                Fill(new Rect(area.center - Vector2.one * 2, Vector2.one * 4), Color.white);
+                GUI.EndGroup();
+            }
+
+            if (map.Contains(Mouse))
+                Tooltip(new Rect(map.x, map.y - 36, 258, 30), "Iron ♦    Coal ■    Stone ●");
 
             var clock = ClockRect;
             Fill(clock, Panel);
@@ -227,15 +306,16 @@ namespace Zombs
             if (clock.Contains(Mouse))
             {
                 string phase = run.Night ? "Night" : "Day";
-                Tooltip(new Rect(clock.x, clock.y - 41, 160, 34), $"{phase}  •  {Mathf.CeilToInt(run.PhaseLength - run.PhaseTime)}s");
+                if (run.Generator == null)
+                    Tooltip(new Rect(clock.x, clock.y - 41, 257, 34), "Place the generator to start the day.");
+                else Tooltip(new Rect(clock.x, clock.y - 41, 160, 34), $"{phase}  •  {Mathf.CeilToInt(run.PhaseLength - run.PhaseTime)}s");
             }
         }
 
-        private void Dot(Rect map, Vector2 position, float size, Color color)
+        private Vector2 MapPoint(Rect area, Vector2 position, float scale)
         {
-            Vector2 relative = new(position.x / catalog.worldSize, -position.y / catalog.worldSize);
-            Vector2 pixel = map.center + Vector2.Scale(relative, map.size - Vector2.one * 8);
-            Fill(new Rect(pixel - Vector2.one * size / 2, Vector2.one * size), color);
+            Vector2 relative = position - run.Player;
+            return area.center + new Vector2(relative.x, -relative.y) * scale;
         }
 
         private void DrawToolbar()
@@ -255,7 +335,7 @@ namespace Zombs
                         run.Equip((ItemKind)index);
                     }
                 }
-                if (index == 4) DrawSmallItem(rect, ItemKind.HealthPotion, "F", () => run.HealPlayer(), run.Resources.gold >= 100);
+                if (index == 4) DrawSmallItem(rect, ItemKind.HealthPotion, "F", () => run.HealPlayer(), run.Resources.Covers(catalog.Item(ItemKind.HealthPotion).prices[0]));
                 if (index == 5) DrawSmallItem(rect, ItemKind.PetPotion, "", () => run.HealPet(), run.ActivePet != null);
                 if (index == 6)
                 {
@@ -265,18 +345,24 @@ namespace Zombs
             }
             BuildingData hovered = null;
             Rect hoverRect = default;
-            for (int index = 0; index < 11; index++)
+            for (int index = 0; index < BuildSlots; index++)
             {
                 var kind = (BuildingKind)index;
                 if (kind == BuildingKind.Generator && run.Generator != null) continue;
                 Rect rect = BuildRect(index);
-                bool available = kind == BuildingKind.Generator || run.Generator != null;
                 var data = catalog.Building(kind);
+                bool available = kind == BuildingKind.Generator ||
+                    (run.Generator != null && run.Generator.Tier >= data.requiredGeneratorTier);
                 Color tint = available ? Color.white : new Color(1, 1, 1, .32f);
                 Fill(rect, placing == kind ? new Color(.81f, .95f, .54f, .4f) : available ? Slot : new Color(.11f, .15f, .076f, .32f));
                 Icon(rect, SpriteArt.Base(kind, 1), data.size == 1 ? .48f : .75f, tint);
                 if (SpriteArt.IsTower(kind)) Icon(rect, SpriteArt.Turret(kind, 1), .80f, tint);
-                string key = index == 10 ? "G" : ((index + 1) % 10).ToString();
+                string key = kind switch
+                {
+                    BuildingKind.Generator => "G",
+                    BuildingKind.Assembler => "M",
+                    _ => ((index + 1) % 10).ToString()
+                };
                 Text(new Rect(rect.xMax - 20, rect.yMax - 18, 16, 16), key, 12, tint, TextAnchor.MiddleRight, true);
                 if (!shop && !settings && !run.Dead && !run.Defeated && Hit(rect)) SelectBuild(kind);
                 if (rect.Contains(Mouse))
@@ -292,7 +378,9 @@ namespace Zombs
                 Text(Inset(rect, 12, 8, 26), hovered.title, 20, TextColor, bold: true);
                 Text(Inset(rect, 12, 35, 21), $"Tier I Building     {run.Count(hovered.kind)} / {hovered.limit}", 14, MutedText, bold: true);
                 Text(Inset(rect, 12, 59, 19), hovered.description, 12, MutedText);
-                Text(Inset(rect, 12, 82, 22), Format(hovered.prices[0]), 14, BrightGold);
+                string cost = hovered.requiredGeneratorTier > 1 && (run.Generator?.Tier ?? 0) < hovered.requiredGeneratorTier
+                    ? $"Requires generator tier {Roman[hovered.requiredGeneratorTier - 1]}" : Format(hovered.prices[0]);
+                Text(Inset(rect, 12, 82, 22), cost, 14, BrightGold);
             }
         }
 
@@ -332,7 +420,7 @@ namespace Zombs
         private Rect StructureRect()
         {
             Vector2 screen = ToGui(selected.Position);
-            return new Rect(Mathf.Clamp(screen.x - 175, 12, Width - 362), Mathf.Clamp(screen.y - 271, 12, Height - 293), 350, 223);
+            return new Rect(Mathf.Clamp(screen.x - 175, 12, Width - 362), Mathf.Clamp(screen.y - 307, 12, Height - 319), 350, 254);
         }
 
         private void DrawStructure()
@@ -348,30 +436,66 @@ namespace Zombs
             string health = canAdvance ? $"Health: {building.MaximumHealth:N0}    ›    {building.Data.health[tier]:N0}"
                 : $"Health: {building.MaximumHealth:N0}";
             Text(Inset(rect, 12, 62, 23), health, 15, TextColor);
+            var recipe = catalog.RecipeFor(building.Kind);
             string stats = building.Kind switch
             {
-                BuildingKind.Smelter => $"Gold/sec: {building.Data.Value(building.Data.income, tier):0.##}",
-                BuildingKind.Miner => $"Stored: {building.Stored:N0}     Fuel: {building.Fuel:N0}",
-                _ => building.Data.Value(building.Data.damage, tier) > 0 ? $"Damage: {building.Data.Value(building.Data.damage, tier):N0}" : building.Data.description
+                BuildingKind.Generator => $"Air radius {building.Data.Range(tier):0}   |   Fuel {TimeLeft(building.Fuel)} / {TimeLeft(run.FuelCapacity(building))}",
+                BuildingKind.Miner => $"{RunState.ResourceName(building.DepositKind.Value)} stored {building.Stored:0.#}   |   Fuel {MachineFuelTime(building)}",
+                _ when recipe != null => $"{Format(recipe.input)} to 1 {recipe.outputName}   |   Queue {building.Queued}   |   Ready {Number(building.Stored)}",
+                _ => building.Data.Value(building.Data.damage, tier) > 0 ? $"Damage {building.Data.Value(building.Data.damage, tier):N0}" : building.Data.description
             };
             Text(Inset(rect, 12, 83, 22), stats, 13, MutedText);
             string upgrade = canAdvance ? $"Upgrade  ({Format(building.Data.prices[tier])})   E" : "Maximum tier";
             if (Button(Inset(rect, 12, 110, 32), upgrade, run.CanUpgrade(building) ? Green : Slot, 13)) Upgrade(building);
-            bool stash = building == run.Generator;
+            bool generator = building == run.Generator;
             var left = new Rect(rect.x + 12, rect.y + 148, 160, 29);
             var right = new Rect(rect.x + 178, rect.y + 148, 160, 29);
-            if (!stash && Button(left, $"Sell ({Format(run.Refund(building))})   T", Red, 11)) Sell(building);
-            if (Button(stash ? Inset(rect, 12, 148, 29) : right,
-                $"Repair ({Format(run.RepairPrice(building))})", Slot, 12)) run.Repair(building);
-            if (building.Kind == BuildingKind.Miner)
+            if (!generator && Button(left, $"Sell ({Format(run.Refund(building))})   T", Red, 11))
             {
-                left.y += 34;
-                right.y += 34;
-                if (Button(left, "Deposit gold", Slot, 13)) run.Deposit(building);
-                if (Button(right, "Collect", Green, 13)) run.Collect(building);
+                Sell(building);
+                return;
             }
-            else Text(Inset(rect, 12, 185, 24), stash ? "Upgrade the stash to unlock higher building tiers." : "Shift or Alt + E upgrades matching buildings.",
-                13, MutedText);
+            if (Button(generator ? Inset(rect, 12, 148, 29) : right,
+                $"Repair ({Format(run.RepairPrice(building))})", Slot, 12)) run.Repair(building);
+
+            left.y += 35;
+            right.y += 35;
+            if (generator || building.Kind == BuildingKind.Miner)
+            {
+                if (Button(left, FuelButtonLabel(building, "wood", catalog.woodFuelSeconds), Slot, 13) &&
+                    !run.Refuel(building, ResourceKind.Wood)) Notify("Need wood and room in the tank.");
+                if (Button(right, FuelButtonLabel(building, "coal", catalog.coalFuelSeconds), Slot, 13) &&
+                    !run.Refuel(building, ResourceKind.Coal)) Notify("Need coal and room in the tank.");
+                if (building.Kind == BuildingKind.Miner)
+                {
+                    if (Button(Inset(rect, 12, 217, 29), "Collect deposit", Green, 13) &&
+                        !run.Collect(building)) Notify("No mined materials ready.");
+                }
+                else if (canAdvance)
+                    Text(Inset(rect, 12, 215, 28),
+                        $"Next  |  radius {building.Data.Range(tier + 1):0}  |  tank {TimeLeft(building.Data.fuelCapacity[tier])}  |  tier {Roman[tier]} buildings",
+                        13, MutedText);
+            }
+            else if (recipe != null)
+            {
+                if (Button(left, $"Queue up to 5 {recipe.outputName}s", Slot, 13) &&
+                    run.QueueProduction(building) == 0) Notify("Need recipe inputs and free space in the machine.");
+                if (Button(right, $"Collect {recipe.outputName}s", Green, 13) &&
+                    !run.Collect(building)) Notify("Nothing ready to collect.");
+            }
+            else Text(Inset(rect, 12, 185, 24), "Shift or Alt + E upgrades matching buildings.", 13, MutedText);
+        }
+
+        private string MachineFuelTime(Structure building)
+        {
+            float rate = run.FuelRate(building);
+            return rate > 0 ? TimeLeft(building.Fuel / rate) : "No burn";
+        }
+
+        private string FuelButtonLabel(Structure building, string material, float units)
+        {
+            float rate = run.FuelRate(building);
+            return rate > 0 ? $"Add {material}  +{units / rate:0}s each" : $"Add {material}";
         }
 
         private void DrawShop()
@@ -379,7 +503,7 @@ namespace Zombs
             var rect = ShopRect;
             Fill(rect, DeepPanel);
             Text(Inset(rect, 20, 12, 36), "Shop", 23, TextColor, bold: true);
-            Text(new Rect(rect.xMax - 183, rect.y + 15, 120, 30), $"{Number(run.Resources.gold)} gold", 16, BrightGold, TextAnchor.MiddleRight);
+            Text(new Rect(rect.xMax - 197, rect.y + 15, 135, 30), $"{Number(run.Resources.parts)} parts", 16, BrightGold, TextAnchor.MiddleRight);
             if (Button(new Rect(rect.xMax - 50, rect.y + 14, 30, 30), "×", Slot, 21)) { shop = false; return; }
             for (int i = 0; i < TabNames.Length; i++)
             {
@@ -403,10 +527,10 @@ namespace Zombs
                 Icon(new Rect(row.x + 8, row.y + 4, 55, 55), SpriteArt.Item(kind, Math.Max(1, tier)), .81f, Color.white);
                 Text(new Rect(row.x + 67, row.y + 8, 158, 27), item.title, 17, TextColor, bold: true);
                 Text(new Rect(row.x + 67, row.y + 34, 150, 22), detail, 13, MutedText);
-                Text(new Rect(row.x + 218, row.y + 7, row.width - 340, 24), item.description, 13, MutedText);
+                Text(new Rect(row.x + 218, row.y + 7, row.width - 364, 24), item.description, 13, MutedText);
                 string value = ShopStats(item, tier);
-                Text(new Rect(row.x + 218, row.y + 33, row.width - 340, 22), value, 12, TextColor);
-                Text(new Rect(row.xMax - 118, row.y, 103, row.height), price, 15, BrightGold, TextAnchor.MiddleRight, true);
+                Text(new Rect(row.x + 218, row.y + 33, row.width - 364, 22), value, 12, TextColor);
+                Text(new Rect(row.xMax - 143, row.y, 128, row.height), price, 15, BrightGold, TextAnchor.MiddleRight, true);
                 if (!settings && !maxed && Hit(row) && !run.Buy(kind)) Notify("This item is unavailable.");
             }
             if (shopTab == 3 && run.ActivePet.HasValue)
@@ -431,27 +555,37 @@ namespace Zombs
         private void DrawNotice(bool includeHint = true)
         {
             string message = notice != null && Time.unscaledTime < noticeUntil ? notice : null;
-            if (message == null && includeHint && profile.hints && !shop && !settings && !run.Dead && !run.Defeated)
+            bool playing = includeHint && !shop && !settings && !run.Dead && !run.Defeated;
+            if (message == null && playing)
             {
-                if (run.Resources.wood >= 5 && hintStep == 0) hintStep = 1;
-                if (run.Resources.stone >= 5 && hintStep == 1) hintStep = 2;
-                if (run.Generator != null && hintStep < 3) hintStep = 3;
-                if (run.Count(BuildingKind.Arrow) > 0 && hintStep == 3) hintStep = 4;
-                if (run.Count(BuildingKind.Smelter) > 0 && hintStep == 4) hintStep = 5;
+                if (run.Generator != null && !run.GeneratorOnline)
+                    message = "Generator offline. Add wood or coal to restore air.";
+                else if (!run.CanBreathe && run.Breath <= 1.5f)
+                    message = "Return to the oxygen circle.";
+            }
+            if (message == null && playing && profile.hints)
+            {
+                if (run.Generator != null && hintStep < 1) hintStep = 1;
+                if (run.Count(BuildingKind.Arrow) > 0 && hintStep == 1) hintStep = 2;
+                if (run.Count(BuildingKind.Smelter) > 0 && hintStep == 2) hintStep = 3;
+                if (run.Count(BuildingKind.Assembler) > 0 && hintStep == 3) hintStep = 4;
+                if ((run.Generator?.Tier ?? 0) >= 2 && hintStep == 4) hintStep = 5;
                 message = hintStep switch
                 {
-                    0 => "Aim at a tree and hold left click to gather wood.",
-                    1 => "Gather stone from a rock with your pickaxe.",
-                    2 => "Choose the Oxygen Generator in the toolbar to start your base.",
-                    3 => "Build an Arrow Tower (4) to defend your stash.",
-                    4 => "Build a Gold Mine (9) to earn gold while you defend.",
+                    0 => placing == BuildingKind.Generator
+                        ? "Place the Oxygen Generator inside the dotted circle."
+                        : "Press G to place the Oxygen Generator near the center.",
+                    1 => "Mine wood and stone, then place an Arrow Tower (4).",
+                    2 => "Press G near the generator to add fuel. Build a Smelter (9).",
+                    3 => "Smelt iron ore. Use two plates to build an Assembler (M).",
+                    4 => "Assemble parts to upgrade the generator or your gear.",
                     _ => null
                 };
                 if (!run.Night && run.Generator != null && run.PhaseLength - run.PhaseTime < 6)
-                    message = "Night is fast approaching. Get to safety!";
+                    message = "Night is approaching. Get back to the generator.";
             }
             if (message == null) return;
-            var rect = new Rect(Width * .5f - 207, 20, 414, 43);
+            var rect = new Rect(Width * .5f - 255, 91, 510, 40);
             Fill(rect, Panel);
             Text(rect, message, 14, TextColor, TextAnchor.MiddleCenter);
         }
@@ -461,10 +595,10 @@ namespace Zombs
             Fill(new Rect(0, 0, Width, Height), new Color(.015f, .022f, .011f, .58f));
             var box = new Rect(Width * .5f - 305, Height * .5f - 113, 610, 226);
             Fill(box, DeepPanel);
-            Text(Inset(box, 20, 23, 46), "Oh dear...", 34, TextColor, TextAnchor.MiddleCenter, true);
+            Text(Inset(box, 20, 23, 46), run.Defeated ? "Generator destroyed" : "You died", 34, TextColor, TextAnchor.MiddleCenter, true);
             string message = run.Defeated
                 ? $"Your Oxygen Generator was destroyed at wave {run.Wave}. Final score: {run.Score:N0}."
-                : "You were killed. Your fortress survives!";
+                : "Respawn near your generator.";
             Text(Inset(box, 20, 82, 30), message, 17, MutedText, TextAnchor.MiddleCenter);
             if (Button(new Rect(box.center.x - 133, box.y + 136, 126, 45), "Respawn", Green, 17))
             {
@@ -498,7 +632,8 @@ namespace Zombs
                 profile.Save();
             }
             if (Button(Inset(box, 18, 200, 38), intro ? "Back" : "Resume", Green, 16)) settings = false;
-            if (!intro && Button(Inset(box, 18, 246, 30), "Main menu", Slot, 14))
+            if (!intro) Text(new Rect(box.x + 213, box.y + 246, 168, 30), $"Seed {run.Seed}", 14, MutedText, TextAnchor.MiddleRight);
+            if (!intro && Button(new Rect(box.x + 18, box.y + 246, 181, 30), "Main menu", Slot, 14))
             {
                 intro = true;
                 settings = false;
@@ -567,10 +702,13 @@ namespace Zombs
 
         private static string Format(Price cost)
         {
-            var parts = new List<string>(4);
+            var parts = new List<string>(7);
             if (cost.wood > 0) parts.Add($"{cost.wood:N0} wood");
             if (cost.stone > 0) parts.Add($"{cost.stone:N0} stone");
-            if (cost.gold > 0) parts.Add($"{cost.gold:N0} gold");
+            if (cost.iron > 0) parts.Add($"{cost.iron:N0} iron ore");
+            if (cost.coal > 0) parts.Add($"{cost.coal:N0} coal");
+            if (cost.plate > 0) parts.Add(cost.plate == 1 ? "1 plate" : $"{cost.plate:N0} plates");
+            if (cost.parts > 0) parts.Add(cost.parts == 1 ? "1 part" : $"{cost.parts:N0} parts");
             if (cost.tokens > 0) parts.Add(cost.tokens == 1 ? "1 token" : $"{cost.tokens} tokens");
             return parts.Count == 0 ? "Free" : string.Join(", ", parts);
         }

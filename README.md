@@ -1,40 +1,39 @@
 # Zombs.io Offline
 
-A single-player Unity 2D recreation of [Zombs.io](https://zombs.io/).
+A single-player Unity 2D survival game. Gather and build during the day, then defend the Oxygen Generator against stronger zombie waves each night.
 
 ## Play on Windows
 
-Run `Builds/Windows/Zombs.io Offline.exe` with its accompanying files and data folder. The game uses local files for settings and best scores and can run without a network connection.
+Run [Zombs.io Offline.exe](Builds/Windows/Zombs.io%20Offline.exe) with its accompanying files and data folder. The game runs offline and saves local settings and best scores. Leave **Map seed** blank for a new layout or enter a whole number to replay a layout. Find the current seed in the pause menu.
 
-## Open or build the project
+## First run
 
-Open this folder with Unity `6000.4.9f1`. Open `Assets/Game/Survival.unity` and press Play. Edit `Assets/Game/Balance.asset` to tune the economy, buildings, items, enemies, and waves. The sprite drawings are in `Assets/Game/Runtime/SpriteArt.cs`.
+1. Press **G** and place the Oxygen Generator in the marked starting area. Placement starts the first day and gives you 90 seconds of fuel.
+2. Gather wood and stone with the pickaxe. Build a few Arrow Towers and refuel before dark. Press **G** near the generator or click it to add wood or coal. Wood adds 6 seconds per unit and coal adds 20. Each click loads up to five units that fit.
+3. Take short trips beyond the blue circle. You have five seconds of breath before poison damages your health. The reserve refills in clean air. The circle goes offline when the tank empties and returns as soon as you refuel.
+4. Build a **Smelter (9)**. Queue two iron ore per plate and collect the result. Use two plates to build an **Assembler (M)**. Queue one plate and one wood per part.
+5. Spend parts on weapon, defense, and generator upgrades. Generator upgrades expand the air radius and tank and raise the building tier limit. Tier II unlocks the **Miner (0)**. Place it next to a deposit, fuel it, and collect what it extracts.
 
-Use **Zombs → Build Windows x64** to rebuild. Run the Edit Mode suite in the Unity Test Runner. The development build also accepts `-zombs-playthrough <output-folder>` to exercise the normal-speed survival loop. Add `-zombs-fast` for accelerated testing or `-zombs-first-boss` to accelerate preparation and return to normal speed before the first boss.
+Ore and stone occur in deposits that deplete. Starter materials are close to the placement area. The tree beside the starting point provides renewable emergency fuel.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
 | WASD or arrow keys | Move |
-| Mouse and left click | Aim, harvest, attack, build, or select a structure |
+| Mouse and left click | Aim, harvest, attack, place, or select |
 | Space | Toggle auto-attack |
-| G or the Gold Stash icon | Place the first Gold Stash |
-| 1–0 | Wall, Door, Slow Trap, Arrow, Cannon, Melee, Bomb, Mage, Gold Mine, Harvester |
+| G | Place or open the Oxygen Generator |
+| 1–8 | Wall, Door, Slow Trap, Arrow, Cannon, Melee, Bomb, Mage |
+| 9 / M / 0 | Smelter / Assembler / Miner |
 | R | Rotate a Melee Tower preview |
 | E / Shift or Alt + E | Upgrade a building / upgrade matching buildings at that tier |
-| T | Sell the selected or hovered building |
+| T | Sell a building |
 | B / Q / F / H | Shop / cycle weapons / use health potion / call pet |
-| Esc / right click | Cancel the current tool. Esc also opens the pause menu. |
+| Esc / right click | Cancel the current tool. Esc opens the pause menu when no tool is active. |
 
-## Reference and differences
+## Open or build the project
 
-- The browser playthrough covered gathering, placement, upgrades, purchases, a full day-night cycle, death, and stash loss. The second run survived wave 8 and showed 100 tokens at the wave 9 loss. The first boss is on wave 9, after eight regular waves.
-- The reference and [official changelog](https://zombs.io/changelog) informed early costs, upgrade gates, pickaxe yields, mine income, and harvester capacities. Later wave composition, boss health and damage, some upgrade costs and rates, and pet progression use editable estimates.
-- The map, sprites, and sound effects are original recreations. The offline menus use local scores. Horns and pets are available from the shop without external accounts. Local pause freezes the simulation, and a fresh run clears the current balance and base.
+Open this folder in Unity **6000.4.9f1**, open [Survival.unity](Assets/Game/Survival.unity), and press Play. Tune timings, fuel, recipes, buildings, equipment, and waves in [Balance.asset](Assets/Game/Balance.asset). The default values used by **Zombs → Restore Default Balance** are in [GameCatalog.cs](Assets/Game/Runtime/GameCatalog.cs).
 
-## Verification
-
-The Edit Mode suite covers harvesting, placement and payment, mine income, bulk upgrades through tier VIII, tower attacks, spells, boss timing, late waves, and the two respawn paths. The packaged playthrough used normal speed for the wave 9 boss fight and the following loss and restart. The Windows release was also played in an AppContainer with zero network capabilities.
-
-Playthrough logs and screenshots are in `Builds/Verification/Evidence`.
+Use **Zombs → Build Windows x64** to rebuild. Run the Edit Mode suite in Unity Test Runner. The development build accepts **-zombs-playthrough <output-folder>** to run the opening through two nights, an iron trip, production, the Miner unlock, and recovery from an empty tank. Add **-zombs-fast** for an accelerated check. **-zombs-first-boss** also runs a separate defense scenario with supplied build materials and returns to normal speed before the first boss.

@@ -15,19 +15,19 @@ namespace Zombs
         public bool Boss { get; }
         public bool Neutral => Camp >= 0;
         public float Flash { get; internal set; }
-        internal readonly float Damage, Speed, Gold;
+        internal readonly float Damage, Speed, Score;
         internal readonly int Camp;
         internal float Cooldown, Slow;
         internal bool Provoked;
 
-        internal Enemy(Vector2 position, Color color, float health, float damage, float speed, float gold, bool boss, int camp = -1)
+        internal Enemy(Vector2 position, Color color, float health, float damage, float speed, float score, bool boss, int camp = -1)
         {
             Position = position;
             Color = color;
             Health = MaxHealth = health;
             Damage = damage;
             Speed = speed;
-            Gold = gold;
+            Score = score;
             Radius = boss ? .87f : camp >= 0 ? .68f : .44f;
             Boss = boss;
             Camp = camp;
@@ -83,14 +83,11 @@ namespace Zombs
                         amount += Catalog.Item(ItemKind.Woody).power[0] + PetEvolution;
                         GainPetExperience(1);
                     }
-                    Resources += node.Stone ? new Price(stone: amount) : new Price(wood: amount);
+                    amount = node.Extract(amount);
+                    Resources += Price.Gathered(node.Kind, amount);
                     node.Flash = .14f;
-                    Emit(EffectKind.Gain, Player, $"+{amount:0.#} {(node.Stone ? "stone" : "wood")}");
+                    Emit(EffectKind.Gain, Player, $"+{amount:0.#} {ResourceName(node.Kind)}");
                 }
-                var building = At(point);
-                if (building != null && building.Kind == BuildingKind.Miner &&
-                    Vector2.Distance(building.Position, Player) < data.range + 1.3f)
-                    Collect(building);
             }
             Enemy target = null;
             float best = float.MaxValue;
@@ -118,6 +115,7 @@ namespace Zombs
                 if (!resourceBuckets.TryGetValue(bucket + new Vector2Int(x, y), out var nearby)) continue;
                 foreach (var node in nearby)
                 {
+                    if (node.Depleted) continue;
                     Vector2 delta = node.Position - Player;
                     float distance = delta.magnitude;
                     float surface = distance - node.Radius;
@@ -239,7 +237,7 @@ namespace Zombs
             enemies.Add(new Enemy(position, boss ? new Color32(125, 119, 163, 255) : data.color,
                 boss ? Catalog.bossHealth * bossScale : data.health * scale,
                 boss ? Catalog.bossDamage * bossScale : data.damage * scale,
-                data.speed * (boss ? .85f : 1), boss ? Catalog.bossGold * bossScale : data.reward, boss));
+                data.speed * (boss ? .85f : 1), boss ? Catalog.bossScore * bossScale : data.score, boss));
         }
 
         private bool OverlapsEnemy(Vector2 center, float half)
@@ -355,7 +353,7 @@ namespace Zombs
                     }
                 if (occupiedCamp) continue;
                 enemies.Add(new Enemy(camps[i], new Color32(157, 96, 121, 255),
-                    125 + i * 18, 13 + i, 4.1f, 35, false, i));
+                    125 + i * 18, 13 + i, 4.1f, 50, false, i));
             }
         }
 
@@ -383,8 +381,8 @@ namespace Zombs
             enemy.Flash = .14f;
             Emit(EffectKind.Damage, enemy.Position, Mathf.CeilToInt(damage).ToString());
             if (enemy.Health > 0) return;
-            Resources += new Price(gold: enemy.Gold, tokens: enemy.Boss ? Catalog.bossTokens : 0);
-            AddScore(enemy.Neutral ? 50 : enemy.Boss ? 1000 : 100);
+            if (enemy.Boss) Resources += new Price(tokens: Catalog.bossTokens);
+            AddScore(Mathf.RoundToInt(enemy.Score));
             if (PetHealth > 0) GainPetExperience(enemy.Boss ? 35 : 7);
         }
 

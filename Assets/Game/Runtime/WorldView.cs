@@ -24,6 +24,9 @@ namespace Zombs
         private static readonly Color HealthColor = new Color32(112, 166, 13, 255);
         private static readonly Color EnemyHealth = new Color32(173, 60, 46, 255);
         private static readonly Color NightColor = new(.63f, .65f, .88f);
+        private static readonly Color AirTint = new(.38f, .91f, .84f, .12f);
+        private static readonly Color AirEdge = new(.55f, 1, .93f, .86f);
+        private static readonly Color OfflineEdge = new(.98f, .62f, .35f, .70f);
 
         public WorldView(Camera camera)
         {
@@ -77,13 +80,26 @@ namespace Zombs
                 Mathf.Ceil(camera.orthographicSize + 2) * 2);
             float halfWidth = camera.aspect * camera.orthographicSize + 3;
             float halfHeight = camera.orthographicSize + 3;
+            if (!intro && !run.Defeated)
+            {
+                if (run.OxygenRadius > 0)
+                {
+                    Part(SpriteArt.AirFill, run.OxygenCenter, Vector2.one * (run.OxygenRadius * 2), 0, -60, AirTint);
+                    if (placing != BuildingKind.Generator)
+                        DrawAirEdge(run.OxygenCenter, run.OxygenRadius, run.Generator == null, AirEdge);
+                }
+                else if (run.Generator != null)
+                    DrawAirEdge(run.Generator.Position, run.Generator.Data.Range(run.Generator.Tier), true, OfflineEdge);
+            }
+
             foreach (var node in run.Nodes)
             {
+                if (node.Depleted) continue;
                 Vector2 relative = node.Position - center;
                 if (Mathf.Abs(relative.x) > halfWidth || Mathf.Abs(relative.y) > halfHeight) continue;
-                float scale = node.Stone ? 3 : 4;
+                float scale = node.Kind == ResourceKind.Wood ? 3.4f : 2.75f;
                 if (node.Flash > 0) scale *= .95f + node.Flash * .36f;
-                Part(node.Stone ? SpriteArt.Rock : SpriteArt.Tree, node.Position, Vector2.one * scale, 0, 0,
+                Part(SpriteArt.Deposit(node.Kind), node.Position, Vector2.one * scale, 0, 0,
                     node.Flash > 0 ? new Color(1, 1, .87f) : Color.white);
             }
             foreach (var building in run.Buildings)
@@ -110,6 +126,9 @@ namespace Zombs
                 float angle = RunState.Angle(run.Aim);
                 DrawPerson(run.Player, angle, 1.48f, Skin, 25, swing, SpriteArt.Item(run.Weapon, run.ItemTier(run.Weapon)));
                 if (run.WearingHat) Part(SpriteArt.Hat, run.Player + run.Aim * .18f, Vector2.one * 1.3f, angle, 29, Color.white);
+                if (!run.CanBreathe)
+                    Part(SpriteArt.Outline, run.Player, Vector2.one * 1.94f, 0, 28,
+                        run.Breath > 0 ? new Color(.95f, .76f, .34f, .65f) : new Color(1, .31f, .20f, .88f));
                 if (run.Protected)
                     Part(SpriteArt.Outline, run.Player, Vector2.one * 1.85f, 0, 29, new Color(.65f, .87f, 1, .48f));
                 Bar(run.Player + Vector2.down * 1.45f, 1.73f, .20f, run.Health / run.Catalog.playerHealth, HealthColor, 29);
@@ -142,10 +161,20 @@ namespace Zombs
                 bool valid = run.CanPlace(kind, cursor) == Placement.Allowed;
                 Vector2 point = run.CenterFor(kind, cursor);
                 if (SpriteArt.IsTower(kind)) RangeCircle(point, run.Catalog.Building(kind).Range(1));
+                if (kind == BuildingKind.Generator)
+                {
+                    DrawAirEdge(Vector2.zero, run.Catalog.generatorSiteRadius, true, new Color(.97f, .96f, .86f, .8f));
+                    if (valid) DrawAirEdge(point, run.Catalog.Building(kind).Range(1), false, new Color(.55f, 1, .93f, .56f));
+                }
                 Color color = valid ? new Color(.9f, 1, .91f, .60f) : new Color(1, .40f, .36f, .63f);
                 Part(SpriteArt.Pixel, point, Vector2.one * run.Catalog.Building(kind).size, 0, 32,
                     valid ? new Color(.69f, .87f, .55f, .12f) : new Color(.81f, .21f, .12f, .27f));
                 DrawBuilding(kind, 1, point, rotation * 90, color, 33);
+                if (!valid)
+                {
+                    Part(SpriteArt.Pixel, point, new Vector2(.92f, .12f), 45, 35, Color.white);
+                    Part(SpriteArt.Pixel, point, new Vector2(.92f, .12f), -45, 35, Color.white);
+                }
             }
             if (healing)
                 Part(SpriteArt.RangeOutline, cursor, Vector2.one * (run.Catalog.healRadius * 2), 0, 33, new Color(.65f, 1, .57f, .58f));
@@ -173,6 +202,9 @@ namespace Zombs
             for (int i = used; i < parts.Count && parts[i].enabled; i++) parts[i].enabled = false;
         }
 
+        private void DrawAirEdge(Vector2 center, float radius, bool dashed, Color color) =>
+            Part(SpriteArt.AirBoundary(dashed), center, Vector2.one * (radius * 2), 0, -59, color);
+
         private void RangeCircle(Vector2 point, float radius)
         {
             float size = radius * 2;
@@ -188,7 +220,8 @@ namespace Zombs
                 float progress = 1 - burst.Time / burst.Duration;
                 Color color = burst.Effect.Kind == EffectKind.Damage ? new Color(1, .64f, .53f) : Color.white;
                 color.a = Mathf.Clamp01(2 - progress * 2);
-                text(burst.Effect.Point + Vector2.up * (1.55f + progress * 1.22f), burst.Effect.Text, color);
+                float height = burst.Effect.Kind == EffectKind.Gain ? 2.2f + progress * 1.45f : 1.55f + progress * 1.22f;
+                text(burst.Effect.Point + Vector2.up * height, burst.Effect.Text, color);
             }
         }
 

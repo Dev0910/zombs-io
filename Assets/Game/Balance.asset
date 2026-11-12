@@ -18,38 +18,63 @@ MonoBehaviour:
     description: Blocks enemies from reaching your towers.
     size: 1
     limit: 250
+    requiredGeneratorTier: 1
     prices:
     - wood: 2
       stone: 0
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
-    - wood: 6
+    - wood: 5
       stone: 0
-      gold: 80
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 1
       tokens: 0
-    - wood: 14
+    - wood: 8
       stone: 0
-      gold: 200
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 2
+      tokens: 0
+    - wood: 12
+      stone: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 3
+      tokens: 0
+    - wood: 17
+      stone: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
       tokens: 0
     - wood: 24
       stone: 0
-      gold: 400
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 6
+      tokens: 0
+    - wood: 31
+      stone: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 9
       tokens: 0
     - wood: 40
       stone: 0
-      gold: 880
-      tokens: 0
-    - wood: 72
-      stone: 0
-      gold: 1800
-      tokens: 0
-    - wood: 120
-      stone: 0
-      gold: 3600
-      tokens: 0
-    - wood: 220
-      stone: 0
-      gold: 7200
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 13
       tokens: 0
     health:
     - 150
@@ -73,38 +98,63 @@ MonoBehaviour:
     description: Lets you walk through your defenses.
     size: 1
     limit: 40
+    requiredGeneratorTier: 1
     prices:
     - wood: 5
       stone: 5
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
-    - wood: 6
-      stone: 6
-      gold: 80
+    - wood: 5
+      stone: 5
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 1
       tokens: 0
-    - wood: 14
-      stone: 14
-      gold: 200
+    - wood: 8
+      stone: 8
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 2
+      tokens: 0
+    - wood: 12
+      stone: 12
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 3
+      tokens: 0
+    - wood: 17
+      stone: 17
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
       tokens: 0
     - wood: 24
       stone: 24
-      gold: 400
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 6
+      tokens: 0
+    - wood: 31
+      stone: 31
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 9
       tokens: 0
     - wood: 40
       stone: 40
-      gold: 880
-      tokens: 0
-    - wood: 72
-      stone: 72
-      gold: 1800
-      tokens: 0
-    - wood: 120
-      stone: 120
-      gold: 3600
-      tokens: 0
-    - wood: 220
-      stone: 220
-      gold: 7200
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 13
       tokens: 0
     health:
     - 100
@@ -128,38 +178,63 @@ MonoBehaviour:
     description: Slows enemies entering your base.
     size: 1
     limit: 12
+    requiredGeneratorTier: 1
     prices:
     - wood: 5
       stone: 5
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
-    - wood: 6
-      stone: 6
-      gold: 80
+    - wood: 5
+      stone: 5
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 1
       tokens: 0
-    - wood: 14
-      stone: 14
-      gold: 200
+    - wood: 8
+      stone: 8
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 2
+      tokens: 0
+    - wood: 12
+      stone: 12
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 3
+      tokens: 0
+    - wood: 17
+      stone: 17
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
       tokens: 0
     - wood: 24
       stone: 24
-      gold: 400
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 6
+      tokens: 0
+    - wood: 31
+      stone: 31
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 9
       tokens: 0
     - wood: 40
       stone: 40
-      gold: 880
-      tokens: 0
-    - wood: 72
-      stone: 72
-      gold: 1800
-      tokens: 0
-    - wood: 120
-      stone: 120
-      gold: 3600
-      tokens: 0
-    - wood: 220
-      stone: 220
-      gold: 7200
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 13
       tokens: 0
     health:
     - 100
@@ -183,38 +258,63 @@ MonoBehaviour:
     description: Fast single-target shots.
     size: 2
     limit: 6
+    requiredGeneratorTier: 1
     prices:
     - wood: 5
       stone: 5
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
-    - wood: 25
+    - wood: 12
+      stone: 12
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 2
+      tokens: 0
+    - wood: 20
       stone: 20
-      gold: 100
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
       tokens: 0
-    - wood: 35
-      stone: 35
-      gold: 500
+    - wood: 30
+      stone: 30
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 7
       tokens: 0
-    - wood: 60
-      stone: 60
-      gold: 1000
+    - wood: 42
+      stone: 42
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 10
+      tokens: 0
+    - wood: 58
+      stone: 58
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 15
+      tokens: 0
+    - wood: 76
+      stone: 76
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 22
       tokens: 0
     - wood: 100
       stone: 100
-      gold: 2200
-      tokens: 0
-    - wood: 180
-      stone: 180
-      gold: 4500
-      tokens: 0
-    - wood: 300
-      stone: 300
-      gold: 9000
-      tokens: 0
-    - wood: 550
-      stone: 550
-      gold: 18000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 32
       tokens: 0
     health:
     - 150
@@ -254,38 +354,63 @@ MonoBehaviour:
     description: Slow shots with area damage.
     size: 2
     limit: 6
+    requiredGeneratorTier: 1
     prices:
     - wood: 15
       stone: 15
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
-    - wood: 15
-      stone: 15
-      gold: 200
+    - wood: 12
+      stone: 12
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 2
       tokens: 0
-    - wood: 35
-      stone: 35
-      gold: 500
+    - wood: 20
+      stone: 20
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
       tokens: 0
-    - wood: 60
-      stone: 60
-      gold: 1000
+    - wood: 30
+      stone: 30
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 7
+      tokens: 0
+    - wood: 42
+      stone: 42
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 10
+      tokens: 0
+    - wood: 58
+      stone: 58
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 15
+      tokens: 0
+    - wood: 76
+      stone: 76
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 22
       tokens: 0
     - wood: 100
       stone: 100
-      gold: 2200
-      tokens: 0
-    - wood: 180
-      stone: 180
-      gold: 4500
-      tokens: 0
-    - wood: 300
-      stone: 300
-      gold: 9000
-      tokens: 0
-    - wood: 550
-      stone: 550
-      gold: 18000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 32
       tokens: 0
     health:
     - 180
@@ -317,38 +442,63 @@ MonoBehaviour:
     description: High damage in one direction. Press R to rotate.
     size: 2
     limit: 6
+    requiredGeneratorTier: 1
     prices:
     - wood: 10
       stone: 10
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
-    - wood: 15
-      stone: 15
-      gold: 200
+    - wood: 12
+      stone: 12
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 2
       tokens: 0
-    - wood: 35
-      stone: 35
-      gold: 500
+    - wood: 20
+      stone: 20
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
       tokens: 0
-    - wood: 60
-      stone: 60
-      gold: 1000
+    - wood: 30
+      stone: 30
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 7
+      tokens: 0
+    - wood: 42
+      stone: 42
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 10
+      tokens: 0
+    - wood: 58
+      stone: 58
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 15
+      tokens: 0
+    - wood: 76
+      stone: 76
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 22
       tokens: 0
     - wood: 100
       stone: 100
-      gold: 2200
-      tokens: 0
-    - wood: 180
-      stone: 180
-      gold: 4500
-      tokens: 0
-    - wood: 300
-      stone: 300
-      gold: 9000
-      tokens: 0
-    - wood: 550
-      stone: 550
-      gold: 18000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 32
       tokens: 0
     health:
     - 240
@@ -380,38 +530,63 @@ MonoBehaviour:
     description: Large explosions at a slow rate of fire.
     size: 2
     limit: 6
+    requiredGeneratorTier: 1
     prices:
     - wood: 10
       stone: 10
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
-    - wood: 25
-      stone: 25
-      gold: 100
+    - wood: 12
+      stone: 12
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 2
       tokens: 0
-    - wood: 40
-      stone: 40
-      gold: 200
+    - wood: 20
+      stone: 20
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
       tokens: 0
-    - wood: 60
-      stone: 60
-      gold: 1000
+    - wood: 30
+      stone: 30
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 7
+      tokens: 0
+    - wood: 42
+      stone: 42
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 10
+      tokens: 0
+    - wood: 58
+      stone: 58
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 15
+      tokens: 0
+    - wood: 76
+      stone: 76
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 22
       tokens: 0
     - wood: 100
       stone: 100
-      gold: 2200
-      tokens: 0
-    - wood: 180
-      stone: 180
-      gold: 4500
-      tokens: 0
-    - wood: 300
-      stone: 300
-      gold: 9000
-      tokens: 0
-    - wood: 550
-      stone: 550
-      gold: 18000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 32
       tokens: 0
     health:
     - 150
@@ -443,38 +618,63 @@ MonoBehaviour:
     description: Fires multiple projectiles at close range.
     size: 2
     limit: 6
+    requiredGeneratorTier: 1
     prices:
     - wood: 15
       stone: 15
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
-    - wood: 15
-      stone: 15
-      gold: 200
+    - wood: 12
+      stone: 12
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 2
       tokens: 0
-    - wood: 35
-      stone: 35
-      gold: 500
+    - wood: 20
+      stone: 20
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
       tokens: 0
-    - wood: 60
-      stone: 60
-      gold: 1000
+    - wood: 30
+      stone: 30
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 7
+      tokens: 0
+    - wood: 42
+      stone: 42
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 10
+      tokens: 0
+    - wood: 58
+      stone: 58
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 15
+      tokens: 0
+    - wood: 76
+      stone: 76
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 22
       tokens: 0
     - wood: 100
       stone: 100
-      gold: 2200
-      tokens: 0
-    - wood: 180
-      stone: 180
-      gold: 4500
-      tokens: 0
-    - wood: 300
-      stone: 300
-      gold: 9000
-      tokens: 0
-    - wood: 550
-      stone: 550
-      gold: 18000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 32
       tokens: 0
     health:
     - 170
@@ -502,105 +702,155 @@ MonoBehaviour:
     interval: 0.67
     splash: 0
   - kind: 8
-    title: Gold Mine
-    description: Generates gold over time.
+    title: Smelter
+    description: Turns iron ore into plates.
     size: 2
-    limit: 8
+    limit: 4
+    requiredGeneratorTier: 1
     prices:
-    - wood: 5
-      stone: 5
-      gold: 0
-      tokens: 0
     - wood: 15
       stone: 15
-      gold: 200
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
-    - wood: 35
-      stone: 35
-      gold: 500
+    - wood: 12
+      stone: 12
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 2
       tokens: 0
-    - wood: 60
-      stone: 60
-      gold: 1000
+    - wood: 20
+      stone: 20
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
+      tokens: 0
+    - wood: 30
+      stone: 30
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 7
+      tokens: 0
+    - wood: 42
+      stone: 42
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 10
+      tokens: 0
+    - wood: 58
+      stone: 58
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 15
+      tokens: 0
+    - wood: 76
+      stone: 76
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 22
       tokens: 0
     - wood: 100
       stone: 100
-      gold: 2200
-      tokens: 0
-    - wood: 180
-      stone: 180
-      gold: 4500
-      tokens: 0
-    - wood: 300
-      stone: 300
-      gold: 9000
-      tokens: 0
-    - wood: 550
-      stone: 550
-      gold: 18000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 32
       tokens: 0
     health:
-    - 150
-    - 250
-    - 388
-    - 601
-    - 931
-    - 1443
-    - 2237
-    - 3467
+    - 210
+    - 320
+    - 496
+    - 769
+    - 1192
+    - 1847
+    - 2863
+    - 4438
     damage: []
-    income:
-    - 6
-    - 8
-    - 10.5
+    income: []
+    capacity:
+    - 10
     - 15
-    - 18
-    - 22.5
-    - 37.5
-    - 52.5
-    capacity: []
+    - 20
+    - 25
+    - 30
+    - 35
+    - 40
+    - 50
     fuelCapacity: []
     ranges: []
     range: 0
     interval: 0
     splash: 0
   - kind: 9
-    title: Resource Harvester
-    description: Spend gold to harvest wood and stone automatically.
+    title: Miner
+    description: Fuel it to extract a nearby deposit.
     size: 2
-    limit: 2
+    limit: 6
+    requiredGeneratorTier: 2
     prices:
-    - wood: 50
-      stone: 50
-      gold: 0
-      tokens: 0
-    - wood: 15
+    - wood: 20
       stone: 15
-      gold: 200
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 3
       tokens: 0
-    - wood: 35
-      stone: 35
-      gold: 500
+    - wood: 12
+      stone: 12
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 2
       tokens: 0
-    - wood: 60
-      stone: 60
-      gold: 1000
+    - wood: 20
+      stone: 20
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
+      tokens: 0
+    - wood: 30
+      stone: 30
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 7
+      tokens: 0
+    - wood: 42
+      stone: 42
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 10
+      tokens: 0
+    - wood: 58
+      stone: 58
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 15
+      tokens: 0
+    - wood: 76
+      stone: 76
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 22
       tokens: 0
     - wood: 100
       stone: 100
-      gold: 2200
-      tokens: 0
-    - wood: 180
-      stone: 180
-      gold: 4500
-      tokens: 0
-    - wood: 300
-      stone: 300
-      gold: 9000
-      tokens: 0
-    - wood: 550
-      stone: 550
-      gold: 18000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 32
       tokens: 0
     health:
     - 300
@@ -613,73 +863,98 @@ MonoBehaviour:
     - 6240
     damage: []
     income:
-    - 3.75
-    - 6.975
-    - 6.825
-    - 10.8
-    - 12.375
-    - 15
-    - 20.25
-    - 24
+    - 0.12
+    - 0.18
+    - 0.25
+    - 0.33
+    - 0.42
+    - 0.52
+    - 0.64
+    - 0.8
     capacity:
-    - 800
-    - 1600
-    - 2400
-    - 3200
-    - 4000
-    - 4800
-    - 5600
-    - 7200
+    - 24
+    - 32
+    - 48
+    - 64
+    - 80
+    - 96
+    - 112
+    - 128
     fuelCapacity:
-    - 1600
-    - 2400
-    - 2800
-    - 4000
-    - 4800
-    - 4800
-    - 9600
-    - 12000
+    - 45
+    - 60
+    - 75
+    - 90
+    - 105
+    - 120
+    - 135
+    - 150
     ranges: []
     range: 0
     interval: 0
     splash: 0
   - kind: 10
-    title: Gold Stash
-    description: Establishes your base and starts zombie waves.
+    title: Oxygen Generator
+    description: Burns fuel to make air safe.
     size: 2
     limit: 1
+    requiredGeneratorTier: 1
     prices:
     - wood: 0
       stone: 0
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
-    - wood: 0
-      stone: 0
-      gold: 5000
+    - wood: 20
+      stone: 20
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 6
       tokens: 0
-    - wood: 0
-      stone: 0
-      gold: 10000
+    - wood: 30
+      stone: 30
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 12
       tokens: 0
-    - wood: 0
-      stone: 0
-      gold: 16000
+    - wood: 45
+      stone: 40
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 20
       tokens: 0
-    - wood: 0
-      stone: 0
-      gold: 32000
+    - wood: 65
+      stone: 55
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 32
       tokens: 0
-    - wood: 0
-      stone: 0
-      gold: 64000
+    - wood: 85
+      stone: 75
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 48
       tokens: 0
-    - wood: 0
-      stone: 0
-      gold: 120000
+    - wood: 115
+      stone: 100
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 70
       tokens: 0
-    - wood: 0
-      stone: 0
-      gold: 200000
+    - wood: 150
+      stone: 130
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 100
       tokens: 0
     health:
     - 1500
@@ -693,6 +968,110 @@ MonoBehaviour:
     damage: []
     income: []
     capacity: []
+    fuelCapacity:
+    - 180
+    - 240
+    - 300
+    - 360
+    - 420
+    - 480
+    - 540
+    - 600
+    ranges:
+    - 12
+    - 16
+    - 20
+    - 23
+    - 26
+    - 29
+    - 32
+    - 35
+    range: 0
+    interval: 0
+    splash: 0
+  - kind: 11
+    title: Assembler
+    description: Makes parts from plates and wood.
+    size: 2
+    limit: 4
+    requiredGeneratorTier: 1
+    prices:
+    - wood: 15
+      stone: 10
+      iron: 0
+      coal: 0
+      plate: 2
+      parts: 0
+      tokens: 0
+    - wood: 12
+      stone: 12
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 2
+      tokens: 0
+    - wood: 20
+      stone: 20
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
+      tokens: 0
+    - wood: 30
+      stone: 30
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 7
+      tokens: 0
+    - wood: 42
+      stone: 42
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 10
+      tokens: 0
+    - wood: 58
+      stone: 58
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 15
+      tokens: 0
+    - wood: 76
+      stone: 76
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 22
+      tokens: 0
+    - wood: 100
+      stone: 100
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 32
+      tokens: 0
+    health:
+    - 210
+    - 320
+    - 496
+    - 769
+    - 1192
+    - 1847
+    - 2863
+    - 4438
+    damage: []
+    income: []
+    capacity:
+    - 10
+    - 15
+    - 20
+    - 25
+    - 30
+    - 35
+    - 40
+    - 50
     fuelCapacity: []
     ranges: []
     range: 0
@@ -705,31 +1084,52 @@ MonoBehaviour:
     prices:
     - wood: 0
       stone: 0
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 1000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 3
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 3000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 6
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 6000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 10
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 12000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 16
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 24000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 24
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 48000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 36
       tokens: 0
     power:
     - 20
@@ -748,33 +1148,54 @@ MonoBehaviour:
     title: Spear
     description: Longer reach and quick thrusts.
     prices:
-    - wood: 0
-      stone: 0
-      gold: 1400
+    - wood: 12
+      stone: 10
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 2800
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 5600
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 8
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 11200
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 13
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 22500
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 20
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 45000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 30
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 90000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 44
       tokens: 0
     power:
     - 30
@@ -793,33 +1214,54 @@ MonoBehaviour:
     title: Bow
     description: Fires an arrow in the direction you aim.
     prices:
-    - wood: 0
-      stone: 0
-      gold: 100
+    - wood: 10
+      stone: 5
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 500
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 3
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 2000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 7
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 5000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 12
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 15000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 20
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 35000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 30
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 80000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 42
       tokens: 0
     power:
     - 20
@@ -839,32 +1281,53 @@ MonoBehaviour:
     description: Throws an explosive that damages nearby enemies.
     prices:
     - wood: 0
-      stone: 0
-      gold: 100
+      stone: 8
+      iron: 0
+      coal: 2
+      plate: 0
+      parts: 0
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 500
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 2000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 8
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 5000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 14
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 15000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 22
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 35000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 32
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 80000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 45
       tokens: 0
     power:
     - 10
@@ -884,44 +1347,74 @@ MonoBehaviour:
     description: Absorbs damage from zombies.
     prices:
     - wood: 0
-      stone: 0
-      gold: 1000
+      stone: 8
+      iron: 0
+      coal: 0
+      plate: 2
+      parts: 0
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 3000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 4
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 7000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 7
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 14000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 12
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 18000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 18
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 22000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 24
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 24000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 32
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 30000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 42
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 45000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 54
       tokens: 0
     - wood: 0
       stone: 0
-      gold: 70000
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 70
       tokens: 0
     power:
     - 500
@@ -963,9 +1456,12 @@ MonoBehaviour:
     title: Health Potion
     description: Heals you to full health. Press F to use.
     prices:
-    - wood: 0
-      stone: 0
-      gold: 100
+    - wood: 5
+      stone: 5
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
     power:
     - 100
@@ -978,9 +1474,12 @@ MonoBehaviour:
     title: Pet Potion
     description: Heals your active pet to full health.
     prices:
-    - wood: 0
-      stone: 0
-      gold: 100
+    - wood: 5
+      stone: 5
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
     power:
     - 100
@@ -995,7 +1494,10 @@ MonoBehaviour:
     prices:
     - wood: 0
       stone: 0
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
     power:
     - 16
@@ -1010,7 +1512,10 @@ MonoBehaviour:
     prices:
     - wood: 0
       stone: 0
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
     power:
     - 1.5
@@ -1025,7 +1530,10 @@ MonoBehaviour:
     prices:
     - wood: 0
       stone: 0
-      gold: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 0
       tokens: 0
     power:
     - 0
@@ -1040,37 +1548,37 @@ MonoBehaviour:
     health: 62
     damage: 7
     speed: 3.9
-    reward: 4
+    score: 100
   - color: {r: 0.41568628, g: 0.5568628, b: 0.6745098, a: 1}
     firstWave: 9
     health: 105
     damage: 10
     speed: 4.1
-    reward: 8
+    score: 125
   - color: {r: 0.8784314, g: 0.7411765, b: 0.28235295, a: 1}
     firstWave: 17
     health: 178
     damage: 15
     speed: 4.2
-    reward: 13
+    score: 150
   - color: {r: 0.73333335, g: 0.3019608, b: 0.2901961, a: 1}
     firstWave: 33
     health: 280
     damage: 22
     speed: 4.35
-    reward: 19
+    score: 175
   - color: {r: 0.5921569, g: 0.37254903, b: 0.6862745, a: 1}
     firstWave: 57
     health: 460
     damage: 30
     speed: 4.5
-    reward: 30
+    score: 200
   - color: {r: 0.8627451, g: 0.5372549, b: 0.2627451, a: 1}
     firstWave: 89
     health: 720
     damage: 39
     speed: 4.6
-    reward: 48
+    score: 250
   worldSize: 420
   buildRadius: 18
   reach: 12
@@ -1087,7 +1595,7 @@ MonoBehaviour:
   bossTokens: 100
   bossHealth: 4800
   bossDamage: 42
-  bossGold: 1100
+  bossScore: 1000
   firstWaveCount: 14
   extraEnemiesPerWave: 6
   maximumWaveCount: 85
@@ -1099,16 +1607,70 @@ MonoBehaviour:
   - 4.5
   - 6
   - 9
+  starterRadius: 8
+  generatorSiteRadius: 5
+  initialFuel: 90
+  breathSeconds: 5
+  breathRefillSeconds: 1.5
+  poisonDamagePerSecond: 8
+  woodFuelSeconds: 6
+  coalFuelSeconds: 20
+  minerReach: 3.5
+  minerFuelPerSecond: 0.25
   healPrice:
     wood: 0
-    stone: 0
-    gold: 1000
+    stone: 10
+    iron: 0
+    coal: 0
+    plate: 2
+    parts: 0
     tokens: 0
   timeoutPrice:
     wood: 0
     stone: 0
-    gold: 10000
+    iron: 0
+    coal: 10
+    plate: 0
+    parts: 8
     tokens: 0
+  smelting:
+    input:
+      wood: 0
+      stone: 0
+      iron: 2
+      coal: 0
+      plate: 0
+      parts: 0
+      tokens: 0
+    output:
+      wood: 0
+      stone: 0
+      iron: 0
+      coal: 0
+      plate: 1
+      parts: 0
+      tokens: 0
+    outputName: plate
+    seconds: 2
+  assembly:
+    input:
+      wood: 1
+      stone: 0
+      iron: 0
+      coal: 0
+      plate: 1
+      parts: 0
+      tokens: 0
+    output:
+      wood: 0
+      stone: 0
+      iron: 0
+      coal: 0
+      plate: 0
+      parts: 1
+      tokens: 0
+    outputName: part
+    seconds: 2
   healRadius: 12
   healDuration: 10
   healPerSecond: 0.1

@@ -15,6 +15,7 @@ namespace Zombs
         private float audioCooldown;
         private bool intro = true, shop, settings, healing, suppressAttack;
         private int rotation, shopTab, hintStep;
+        private string seedInput = "";
         private LocalProfile profile;
         private BuildingKind? placing;
         private Structure selected;
@@ -66,9 +67,15 @@ namespace Zombs
 
         private void Begin()
         {
+            int seed = Guid.NewGuid().GetHashCode();
+            if (!string.IsNullOrWhiteSpace(seedInput) && !int.TryParse(seedInput, out seed))
+            {
+                Notify("Enter a whole number for the seed, or leave it blank.");
+                return;
+            }
             profile.nickname = string.IsNullOrWhiteSpace(profile.nickname) ? "Player" : profile.nickname.Trim();
             profile.Save();
-            Attach(new RunState(catalog, Guid.NewGuid().GetHashCode()));
+            Attach(new RunState(catalog, seed));
             intro = false;
             settings = shop = false;
             notice = null;
@@ -166,7 +173,16 @@ namespace Zombs
             for (int index = 0; index < 10; index++)
                 if (Input.GetKeyDown(index == 9 ? KeyCode.Alpha0 : (KeyCode)((int)KeyCode.Alpha1 + index)))
                     SelectBuild((BuildingKind)index);
-            if (Input.GetKeyDown(KeyCode.G) && run.Generator == null) SelectBuild(BuildingKind.Generator);
+            if (Input.GetKeyDown(KeyCode.G))
+            {
+                if (run.Generator == null) SelectBuild(BuildingKind.Generator);
+                else if (run.InReach(run.Generator))
+                {
+                    ResetSelection();
+                    selected = run.Generator;
+                }
+            }
+            if (Input.GetKeyDown(KeyCode.M)) SelectBuild(BuildingKind.Assembler);
             if (Input.GetKeyDown(KeyCode.R) && placing == BuildingKind.Melee) rotation = (rotation + 3) % 4;
             if (Input.GetKeyDown(KeyCode.Space)) run.ToggleAutoAttack();
             if (Input.GetKeyDown(KeyCode.Q))
@@ -210,9 +226,14 @@ namespace Zombs
 
         private void SelectBuild(BuildingKind kind)
         {
+            if (kind == BuildingKind.Miner && run.Generator != null && run.Generator.Tier < catalog.Building(kind).requiredGeneratorTier)
+            {
+                Notify(PlacementMessage(Placement.TierLocked));
+                return;
+            }
             if (kind != BuildingKind.Generator && run.Generator == null)
             {
-                Notify("Place a Oxygen Generator to start your base.");
+                Notify("Place an Oxygen Generator to start your base.");
                 return;
             }
             selected = null;
@@ -319,7 +340,10 @@ namespace Zombs
 
         private static string PlacementMessage(Placement placement) => placement switch
         {
-            Placement.NeedGenerator => "Place a Oxygen Generator to start your base.",
+            Placement.NeedGenerator => "Place an Oxygen Generator to start your base.",
+            Placement.TierLocked => "Upgrade the Oxygen Generator to tier II to unlock the Miner.",
+            Placement.NeedsDeposit => "Place the Miner next to iron ore, coal, or stone.",
+            Placement.StarterSite => "Place the Oxygen Generator in the marked starting area.",
             Placement.Limit => "You have reached the limit for this building.",
             Placement.TooFar => "This position is outside building range.",
             Placement.Occupied => "You can't place buildings in occupied cells.",
