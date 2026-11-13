@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
@@ -18,6 +19,38 @@ namespace Zombs
 
         [TearDown]
         public void TearDown() => UnityEngine.Object.DestroyImmediate(catalog);
+
+        [Test]
+        public void FeedbackTracksSuccessfulActionsAndStateTransitions()
+        {
+            catalog.initialFuel = 1;
+            catalog.daySeconds = 5;
+            catalog.smelting.seconds = .2f;
+            var run = New(new Price(50, 50, iron: 4));
+            var events = new List<Effect>();
+            run.EffectOccurred += events.Add;
+            var core = Place(run, BuildingKind.Generator, Generator);
+            var smelter = Place(run, BuildingKind.Smelter, North);
+            Assert.That(run.QueueProduction(smelter), Is.EqualTo(2));
+            Advance(run, 1.1f);
+            Assert.That(events.Count(effect => effect.Kind == EffectKind.ProductionReady), Is.EqualTo(1));
+            Assert.That(events.Count(effect => effect.Kind == EffectKind.PowerLost), Is.EqualTo(1));
+
+            Assert.That(run.Refuel(core, ResourceKind.Coal), Is.False);
+            Assert.That(run.Refuel(core, ResourceKind.Wood), Is.True);
+            Assert.That(run.Refuel(core, ResourceKind.Wood), Is.True);
+            Assert.That(events.Count(effect => effect.Kind == EffectKind.PowerRestored), Is.EqualTo(1));
+            Assert.That(events.Count(effect => effect.Kind == EffectKind.Refueled), Is.EqualTo(1));
+
+            Vector2 tree = run.Nodes.First(node => node.Kind == ResourceKind.Wood).Position;
+            Advance(run, .22f, move: tree.normalized);
+            Advance(run, .1f, aim: tree, attack: true);
+            var harvest = events.Single(effect => effect.Kind == EffectKind.Harvested);
+            Assert.That(harvest.Point, Is.EqualTo(tree));
+            Assert.That(harvest.Material, Is.EqualTo(ResourceKind.Wood));
+            Advance(run, 4);
+            Assert.That(events.Count(effect => effect.Kind == EffectKind.WaveStarted), Is.EqualTo(1));
+        }
 
         [Test]
         public void PickaxeHarvestUsesCooldownAndFractionalYield()
@@ -168,13 +201,189 @@ namespace Zombs
             Assert.That(first.Nodes.Select(node => (node.Position, node.Kind, node.Remaining)),
                 Is.EqualTo(repeat.Nodes.Select(node => (node.Position, node.Kind, node.Remaining))));
             Assert.That(first.Nodes.Select(node => node.Position), Is.Not.EqualTo(different.Nodes.Select(node => node.Position)));
-            for (int seed = -10; seed <= 10; seed++)
+            foreach (int seed in Enumerable.Range(-64, 129).Concat(new[] { int.MinValue, int.MaxValue, 5238 }))
             {
                 var run = new RunState(catalog, seed);
                 foreach (ResourceKind kind in Enum.GetValues(typeof(ResourceKind)))
                     Assert.That(run.Nodes.Any(node => node.Kind == kind && node.Position.magnitude < 20), Is.True, $"Seed {seed}: {kind}");
                 Assert.That(run.Nodes.Count(node => node.Kind == ResourceKind.Coal && node.Position.magnitude < 25), Is.GreaterThan(1));
             }
+        }
+
+        [Test]
+        public void TierThreeAssemblerFeedsFromNearbySmelterAfterSnapshotRestore()
+        {
+            var run = New(new Price(1000, 1000, plate: 20, parts: 100));
+            var generator = Place(run, BuildingKind.Generator, Generator);
+            var smelter = Place(run, BuildingKind.Smelter, North);
+            var assembler = Place(run, BuildingKind.Assembler, South);
+            smelter.Stored = 2;
+            Advance(run, .1f);
+            Assert.That(assembler.Queued, Is.Zero);
+            Assert.That(smelter.Stored, Is.EqualTo(2));
+            Assert.That(run.Upgrade(generator, false), Is.EqualTo(1));
+            Assert.That(run.Upgrade(generator, false), Is.EqualTo(1));
+            Assert.That(run.Upgrade(assembler, false), Is.EqualTo(1));
+            Assert.That(run.Upgrade(assembler, false), Is.EqualTo(1));
+
+            float wood = run.Resources.wood;
+            run = RunState.Restore(catalog, run.Capture());
+            Assert.That(run, Is.Not.Null);
+            Advance(run, .1f);
+            Assert.That(run.At(North).Stored, Is.Zero);
+            Assert.That(run.At(South).Queued, Is.EqualTo(2));
+            Assert.That(run.Resources.wood, Is.EqualTo(wood - 2));
+            Advance(run, 6);
+            Assert.That(run.Collect(run.At(South)), Is.True);
+        }
+
+        [TestCase(-64)]
+        [TestCase(-1)]
+        [TestCase(0)]
+        [TestCase(64)]
+        [TestCase(int.MinValue)]
+        [TestCase(int.MaxValue)]
+        public void EmptyTankCanRestartOnHarvestedWoodAndSupportACoalTrip(int seed)
+        {
+            catalog.initialFuel = 1;
+            var run = new RunState(catalog, seed);
+            var core = Place(run, BuildingKind.Generator, new Vector2(-3, 0));
+            Advance(run, catalog.initialFuel + .1f);
+            Assert.That(run.GeneratorOnline, Is.False);
+            Vector2 tree = run.Nodes.First(node => node.Kind == ResourceKind.Wood).Position;
+            Advance(run, .21f, move: tree.normalized);
+            Advance(run, .7f, aim: tree, attack: true);
+            Assert.That(run.Refuel(core, ResourceKind.Wood), Is.True);
+            Assert.That(run.CanBreathe, Is.True);
+
+            Vector2 coal = run.Nodes.Where(node => node.Kind == ResourceKind.Coal)
+                .OrderBy(node => (node.Position - new Vector2(10, 4)).sqrMagnitude).First().Position;
+            for (int i = 0; i < 360 && run.Resources.coal < 2; i++)
+            {
+                Vector2 delta = coal - run.Player;
+                run.Step(delta.magnitude > 1.35f ? delta.normalized : Vector2.zero, coal, true);
+            }
+            Assert.That(run.Resources.coal, Is.GreaterThanOrEqualTo(2), $"Seed {seed}");
+            Assert.That(run.Dead, Is.False);
+            for (int i = 0; i < 360 && !run.InReach(core); i++)
+                run.Step((Vector2.zero - run.Player).normalized, Vector2.zero, false);
+            Assert.That(run.Refuel(core, ResourceKind.Coal), Is.True);
+        }
+
+        [TestCase(1234)]
+        [TestCase(-19)]
+        [TestCase(5238)]
+        public void FreshRunThroughFirstBoss(int seed)
+        {
+            var run = new RunState(catalog, seed);
+            var core = Place(run, BuildingKind.Generator, new Vector2(-3, 0));
+            int woodBurned = 0, coalBurned = 0;
+            float minimumFuel = core.Fuel, elapsed = 0;
+            Price defenseCost = default;
+            void Tick(Vector2 move = default, Vector2 aim = default, bool attack = false)
+            {
+                if (run.InReach(core) && core.Fuel < 90)
+                {
+                    int coal = run.FuelLoad(core, ResourceKind.Coal);
+                    if (run.Refuel(core, ResourceKind.Coal)) coalBurned += coal;
+                    else
+                    {
+                        int wood = run.FuelLoad(core, ResourceKind.Wood);
+                        if (run.Resources.wood >= 25 && run.Refuel(core, ResourceKind.Wood)) woodBurned += wood;
+                    }
+                }
+                run.Step(move, aim, attack);
+                elapsed += RunState.TickSeconds;
+                minimumFuel = Mathf.Min(minimumFuel, core.Fuel);
+                Assert.That(run.Dead || run.Defeated, Is.False, $"Seed {seed}, wave {run.Wave}, t={elapsed:0}, player={run.Player}");
+                Assert.That(elapsed, Is.LessThan(1350));
+            }
+
+            void Go(Vector2 position)
+            {
+                for (int i = 0; i < 360; i++)
+                {
+                    Vector2 delta = position - run.Player;
+                    if (delta.magnitude < .09f) return;
+                    Tick(Vector2.ClampMagnitude(delta / (catalog.playerSpeed * RunState.TickSeconds), 1));
+                }
+                Assert.Fail($"Seed {seed}: could not walk to {position} from {run.Player}");
+            }
+
+            void Gather(ResourceKind kind, float target, Vector2 approach)
+            {
+                Go(approach);
+                var node = run.Nodes.Where(n => n.Kind == kind && !n.Depleted)
+                    .OrderBy(n => (n.Position - run.Player).sqrMagnitude).First();
+                for (int i = 0; i < 2400 && !run.Resources.Covers(Price.Gathered(kind, target)); i++)
+                {
+                    Vector2 delta = node.Position - run.Player;
+                    Tick(delta.magnitude > 1.35f ? delta.normalized : Vector2.zero, node.Position, true);
+                    if (node.Depleted)
+                        node = run.Nodes.Where(n => n.Kind == kind && !n.Depleted)
+                            .OrderBy(n => (n.Position - run.Player).sqrMagnitude).First();
+                }
+                Assert.That(run.Resources.Covers(Price.Gathered(kind, target)), Is.True, $"Seed {seed}: gather {kind}");
+            }
+
+            void Defense(BuildingKind kind, Vector2 position)
+            {
+                Place(run, kind, position);
+                defenseCost += catalog.Building(kind).prices[0];
+            }
+
+            Gather(ResourceKind.Wood, 65, Vector2.zero);
+            Gather(ResourceKind.Stone, 90, new Vector2(0, 4));
+            Go(Vector2.zero);
+            Defense(BuildingKind.Arrow, new Vector2(-5, 2));
+            Defense(BuildingKind.Arrow, new Vector2(-1, 2));
+            Defense(BuildingKind.Arrow, new Vector2(-3, -2));
+            Defense(BuildingKind.Arrow, new Vector2(-5, -2));
+            while (run.Wave < 1 || run.Night) Tick();
+            float firstNightFuel = core.Fuel;
+            var smelter = Place(run, BuildingKind.Smelter, new Vector2(-1, -2));
+            Go(new Vector2(1, 1.15f));
+            Go(new Vector2(7, 2));
+            Go(new Vector2(9, -4));
+            Gather(ResourceKind.Iron, 20, new Vector2(12, -7));
+            Go(new Vector2(9, -4));
+            Go(new Vector2(7, 2));
+            Go(new Vector2(1, 1.15f));
+            Go(Vector2.zero);
+            float productionStarted = elapsed;
+            while (run.Resources.plate < 10)
+            {
+                run.QueueProduction(smelter);
+                run.Collect(smelter);
+                Tick();
+            }
+            Gather(ResourceKind.Wood, 120, Vector2.zero);
+            Go(Vector2.zero);
+            var assembler = Place(run, BuildingKind.Assembler, new Vector2(-1, -4));
+            while (run.Resources.parts < 6)
+            {
+                run.QueueProduction(assembler);
+                run.Collect(assembler);
+                Tick();
+            }
+            Assert.That(run.Upgrade(core, false), Is.EqualTo(1));
+            float tierTwoAt = elapsed;
+            Defense(BuildingKind.Bomb, new Vector2(-3, 2));
+            Defense(BuildingKind.Bomb, new Vector2(-3, -4));
+            while (run.Wave < catalog.firstBossWave || run.Night)
+            {
+                if (run.Resources.wood < 30 && !run.Night)
+                {
+                    Gather(ResourceKind.Wood, 145, Vector2.zero);
+                    Go(Vector2.zero);
+                }
+                foreach (var building in run.Buildings)
+                    if (building.Health < building.MaximumHealth * .75f) run.Repair(building);
+                Tick();
+            }
+            TestContext.WriteLine($"Seed {seed}: fuel min {minimumFuel:0.0}s, first dawn {firstNightFuel:0.0}s, burned {woodBurned} wood and {coalBurned} coal. " +
+                $"Defense {defenseCost.wood} wood/{defenseCost.stone} stone, production start {productionStarted:0.0}s, Tier II {tierTwoAt:0.0}s, boss night clear {elapsed:0.0}s.");
+            Assert.That(run.Resources.tokens, Is.GreaterThanOrEqualTo(catalog.bossTokens));
         }
 
         [Test]

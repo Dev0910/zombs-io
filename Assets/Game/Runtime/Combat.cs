@@ -86,6 +86,7 @@ namespace Zombs
                     amount = node.Extract(amount);
                     Resources += Price.Gathered(node.Kind, amount);
                     node.Flash = .14f;
+                    Emit(EffectKind.Harvested, node.Position, material: node.Kind);
                     Emit(EffectKind.Gain, Player, $"+{amount:0.#} {ResourceName(node.Kind)}");
                 }
             }
@@ -101,7 +102,11 @@ namespace Zombs
                 best = distance;
                 target = enemy;
             }
-            if (target != null) HitEnemy(target, damage);
+            if (target != null)
+            {
+                HitEnemy(target, damage);
+                Emit(EffectKind.Impact, target.Position);
+            }
         }
 
         private ResourceNode TargetResource(float range)

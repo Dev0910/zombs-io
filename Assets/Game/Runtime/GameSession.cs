@@ -11,9 +11,7 @@ namespace Zombs
         private Camera sceneCamera;
         private WorldView world;
         private RunState run;
-        private AudioSource audioSource;
-        private AudioClip hitSound, buildSound, blastSound;
-        private float audioCooldown;
+        private GameAudio gameAudio;
         private bool intro = true, shop, settings, healing, suppressAttack;
         private int rotation, shopTab, hintStep;
         private string seedInput = "";
@@ -43,11 +41,7 @@ namespace Zombs
             Application.runInBackground = true;
             profile = LocalProfile.Load();
             if (profile.fullscreen) Screen.fullScreenMode = FullScreenMode.FullScreenWindow;
-            audioSource = gameObject.AddComponent<AudioSource>();
-            audioSource.playOnAwake = false;
-            hitSound = Sound("Strike", .065f, 135, .5f);
-            buildSound = Sound("Build", .13f, 430, .12f);
-            blastSound = Sound("Blast", .17f, 64, .70f);
+            gameAudio = new GameAudio(gameObject);
             world = new WorldView(sceneCamera);
             Attach(new RunState(catalog, 5238));
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
@@ -67,6 +61,7 @@ namespace Zombs
         private void OnDestroy()
         {
             if (run != null) run.EffectOccurred -= OnEffect;
+            gameAudio?.Dispose();
             world?.Dispose();
             if (titleFade != null) Destroy(titleFade);
         }
@@ -76,6 +71,7 @@ namespace Zombs
             if (run != null) run.EffectOccurred -= OnEffect;
             run = state;
             run.EffectOccurred += OnEffect;
+            gameAudio.Reset();
             world.Attach(run);
             ResetSelection();
             tickRemainder = 0;
@@ -159,7 +155,6 @@ namespace Zombs
 
         private void Update()
         {
-            audioCooldown -= Time.unscaledDeltaTime;
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
             if (UpdateVerification()) return;
 #endif
@@ -238,6 +233,8 @@ namespace Zombs
         {
             Vector3 mouse = Input.mousePosition;
             bool pointerOnHud = BlocksWorld(new Vector2(mouse.x, Screen.height - mouse.y));
+            gameAudio.SetScene(run, !intro && !settings && !run.Defeated, profile.muted || AcceleratedVerification,
+                Time.unscaledDeltaTime);
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
             if (verification != null) pointerOnHud = false;
 #endif
@@ -359,6 +356,8 @@ namespace Zombs
 
         private void OnEffect(Effect effect)
         {
+            if (!profile.muted && !AcceleratedVerification)
+                gameAudio.Play(effect, run.Player, Time.unscaledTime);
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
             if (verification != null) return;
 #endif
@@ -369,25 +368,14 @@ namespace Zombs
                 profile.Save();
                 checkpointPending = true;
             }
-            if (profile.muted || audioCooldown > 0) return;
-            switch (effect.Kind)
-            {
-                case EffectKind.Gain:
-                case EffectKind.Impact:
-                    audioSource.PlayOneShot(hitSound, .24f);
-                    audioCooldown = .09f;
-                    break;
-                case EffectKind.Placed:
-                case EffectKind.Upgraded:
-                    audioSource.PlayOneShot(buildSound, .28f);
-                    audioCooldown = .06f;
-                    break;
-                case EffectKind.Explosion:
-                    audioSource.PlayOneShot(blastSound, .26f);
-                    audioCooldown = .12f;
-                    break;
-            }
         }
+
+        private bool AcceleratedVerification =>
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+            verification != null && verification.Speed > 1;
+#else
+            false;
+#endif
 
         private Vector2 ScreenToWorld(Vector2 screen)
         {
@@ -398,23 +386,6 @@ namespace Zombs
         private static float Axis(KeyCode low, KeyCode high, KeyCode otherLow, KeyCode otherHigh) =>
             (Input.GetKey(high) || Input.GetKey(otherHigh) ? 1 : 0) -
             (Input.GetKey(low) || Input.GetKey(otherLow) ? 1 : 0);
-
-        private static AudioClip Sound(string name, float duration, float pitch, float noise)
-        {
-            const int sampleRate = 22050;
-            var samples = new float[Mathf.CeilToInt(duration * sampleRate)];
-            var random = new System.Random(16);
-            for (int i = 0; i < samples.Length; i++)
-            {
-                float time = i / (float)sampleRate;
-                float envelope = Mathf.Min(1, time * 500) * Mathf.Pow(1 - time / duration, 2);
-                samples[i] = envelope * Mathf.Lerp(Mathf.Sin(2 * Mathf.PI * pitch * time * (1 - .3f * time / duration)),
-                    (float)random.NextDouble() * 2 - 1, noise);
-            }
-            var clip = AudioClip.Create(name, samples.Length, 1, sampleRate, false);
-            clip.SetData(samples, 0);
-            return clip;
-        }
 
         private static string PlacementMessage(Placement placement) => placement switch
         {

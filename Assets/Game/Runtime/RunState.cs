@@ -5,18 +5,24 @@ using UnityEngine;
 namespace Zombs
 {
     public enum Placement { Allowed, Dead, NeedGenerator, TierLocked, NeedsDeposit, Limit, TooFar, StarterSite, Occupied, Insufficient }
-    public enum EffectKind { Swing, Impact, Explosion, Gain, Damage, Placed, Upgraded, Defeated }
+    public enum EffectKind
+    {
+        Swing, Impact, Explosion, Gain, Damage, Placed, Upgraded, Defeated,
+        Harvested, Refueled, PowerLost, PowerRestored, ProductionReady, WaveStarted, BossStarted
+    }
 
     public readonly struct Effect
     {
         public readonly EffectKind Kind;
         public readonly Vector2 Point;
         public readonly string Text;
-        public Effect(EffectKind kind, Vector2 point, string text)
+        public readonly ResourceKind? Material;
+        public Effect(EffectKind kind, Vector2 point, string text, ResourceKind? material = null)
         {
             Kind = kind;
             Point = point;
             Text = text;
+            Material = material;
         }
     }
 
@@ -355,8 +361,10 @@ namespace Zombs
         {
             int amount = FuelLoad(building, kind);
             if (amount < 1) return false;
+            bool restarting = building == Generator && !GeneratorOnline;
             Resources -= Price.Gathered(kind, amount);
             building.Fuel += amount * FuelValue(kind);
+            Emit(restarting ? EffectKind.PowerRestored : EffectKind.Refueled, building.Position, material: kind);
             return true;
         }
 
@@ -615,7 +623,11 @@ namespace Zombs
             shieldRecovery -= dt;
             healRecharge -= dt;
             timeoutRecharge -= dt;
-            if (GeneratorOnline) Generator.Fuel = Mathf.Max(0, Generator.Fuel - dt);
+            if (GeneratorOnline)
+            {
+                Generator.Fuel = Mathf.Max(0, Generator.Fuel - dt);
+                if (!GeneratorOnline) Emit(EffectKind.PowerLost, Generator.Position);
+            }
             if (!Dead)
             {
                 Player = MovePlayer(Vector2.ClampMagnitude(move, 1) * (Catalog.playerSpeed * dt));
@@ -685,6 +697,8 @@ namespace Zombs
                         nextSpawn = 0;
                         spawnClock = 1.4f;
                         remainingSpawns = TimeoutActive ? 0 : WaveCount(Wave);
+                        if (!TimeoutActive)
+                            Emit(Catalog.IsBossWave(Wave) ? EffectKind.BossStarted : EffectKind.WaveStarted, Generator.Position);
                     }
                 }
             }
@@ -715,6 +729,45 @@ namespace Zombs
                 if (building.Data.damage != null && building.Data.damage.Length != 0 && building.Cooldown <= 0)
                     FireTower(building);
             }
+            foreach (var building in buildings)
+                if (building.Tier >= 3 && Catalog.RecipeFor(building.Kind) is Recipe recipe)
+                    TransferProductionInputs(building, recipe);
+        }
+
+        internal const float ProductionTransferRange = 6;
+
+        private void TransferProductionInputs(Structure receiver, Recipe recipe)
+        {
+            if (receiver.Stored + receiver.Queued + 1 > receiver.Data.Value(receiver.Data.capacity, receiver.Tier))
+                return;
+
+            foreach (var source in buildings)
+            {
+                if ((source.Position - receiver.Position).sqrMagnitude > ProductionTransferRange * ProductionTransferRange) continue;
+                float units;
+                Price additionalInput = default;
+                if (receiver.Kind == BuildingKind.Smelter && source.Kind == BuildingKind.Miner &&
+                    source.DepositKind == ResourceKind.Iron)
+                {
+                    units = recipe.input.iron;
+                    additionalInput = recipe.input - new Price(iron: units);
+                }
+                else if (receiver.Kind == BuildingKind.Assembler && source.Kind == BuildingKind.Smelter &&
+                    Catalog.smelting.output.plate > 0)
+                {
+                    float batches = recipe.input.plate / Catalog.smelting.output.plate;
+                    units = Mathf.Round(batches);
+                    if (!Mathf.Approximately(units, batches)) continue;
+                    additionalInput = recipe.input - new Price(plate: recipe.input.plate);
+                }
+                else continue;
+
+                if (units <= 0 || source.Stored < units || !Resources.Covers(additionalInput)) continue;
+                source.Stored -= units;
+                Resources -= additionalInput;
+                receiver.Queued++;
+                return;
+            }
         }
 
         private void UpdateMiner(Structure building, float dt)
@@ -737,15 +790,19 @@ namespace Zombs
 
         private void UpdateProduction(Structure building, float dt)
         {
-            var recipe = Catalog.RecipeFor(building.Kind);
-            float duration = Mathf.Max(TickSeconds, recipe.seconds / (1 + (building.Tier - 1) * .2f));
+            float duration = ProductionDuration(building);
             building.ProcessProgress += dt;
             if (building.ProcessProgress + .0001f < duration) return;
             building.ProcessProgress = Mathf.Max(0, building.ProcessProgress - duration);
             building.Queued--;
+            bool wasEmpty = building.Stored == 0;
             building.Stored++;
             if (building.Queued == 0) building.ProcessProgress = 0;
+            if (wasEmpty) Emit(EffectKind.ProductionReady, building.Position);
         }
+
+        internal float ProductionDuration(Structure building) =>
+            Mathf.Max(TickSeconds, Catalog.RecipeFor(building.Kind).seconds / (1 + (building.Tier - 1) * .2f));
 
         private void Remove(Structure building)
         {
@@ -899,6 +956,7 @@ namespace Zombs
             return Mathf.Lerp(from, to, (float)random.NextDouble());
         }
         private void AddScore(long score) => Score = (int)Math.Min(int.MaxValue, Score + score);
-        private void Emit(EffectKind kind, Vector2 point, string label = null) => EffectOccurred?.Invoke(new Effect(kind, point, label));
+        private void Emit(EffectKind kind, Vector2 point, string label = null, ResourceKind? material = null) =>
+            EffectOccurred?.Invoke(new Effect(kind, point, label, material));
     }
 }

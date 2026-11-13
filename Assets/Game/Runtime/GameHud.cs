@@ -130,7 +130,15 @@ namespace Zombs
             Rect full = new(0, 0, Width, Height);
             Fill(full, DeepPanel);
             if (titleArt != null && Event.current.type == EventType.Repaint)
-                GUI.DrawTexture(full, titleArt, ScaleMode.ScaleAndCrop);
+            {
+                float aspect = Width / Height;
+                if (aspect < titleArt.width / (float)titleArt.height)
+                {
+                    float visible = aspect * titleArt.height / titleArt.width;
+                    GUI.DrawTextureWithTexCoords(full, titleArt, new Rect((1 - visible) * .78f, 0, visible, 1));
+                }
+                else GUI.DrawTexture(full, titleArt, ScaleMode.ScaleAndCrop);
+            }
             if (Event.current.type == EventType.Repaint)
                 GUI.DrawTexture(new Rect(0, 0, Width * .69f, Height), titleFade, ScaleMode.StretchToFill, true);
 
@@ -253,12 +261,16 @@ namespace Zombs
         private void DrawPhase()
         {
             Rect rect = ClockRect;
-            Color accent = run.Night ? Purple : BrightGold;
-            Frame(rect, Panel, Line);
-            string phase = run.Generator == null ? "PREPARATION" : run.Night ? "NIGHT" : "DAYLIGHT";
+            bool boss = run.Night && !run.TimeoutActive && catalog.IsBossWave(run.Wave);
+            float remaining = run.PhaseLength - run.PhaseTime;
+            bool dusk = run.Generator != null && !run.Night && remaining <= 10;
+            Color accent = boss ? Coral : run.Night ? Purple : BrightGold;
+            Frame(rect, Panel, boss || dusk ? accent : Line);
+            string phase = run.Generator == null ? "PREPARATION" : boss ? "BOSS WAVE" :
+                run.Night ? "NIGHT" : dusk ? "DUSK" : "DAYLIGHT";
             Text(Inset(rect, 11, 3, 22), phase, 19, accent, bold: true);
-            string left = run.Generator == null ? "Place generator to begin" : TimeLeft(run.PhaseLength - run.PhaseTime);
-            string wave = run.Wave > 0 ? $"Wave {run.Wave}" : "Wave 1 ahead";
+            string left = run.Generator == null ? "Place generator to begin" : TimeLeft(remaining);
+            string wave = run.Night ? $"Wave {run.Wave}" : $"Wave {run.Wave + 1} ahead";
             Text(Inset(rect, 11, 26, 18), run.Generator == null ? left : $"{left}   /   {wave}", 14, TextColor);
             float progress = run.Generator == null ? 0 : Mathf.Clamp01(run.PhaseTime / run.PhaseLength);
             Fill(new Rect(rect.x, rect.yMax - 3, rect.width, 3), Slot);
@@ -554,6 +566,13 @@ namespace Zombs
                 SpriteArt.IsTower(building.Kind) ? $"Damage {building.Data.Value(building.Data.damage, tier):0}   /   Range {building.Data.Range(tier):0.0}" :
                 building.Data.description;
             Text(Inset(rect, 13, 100, 37), stats, 15, TextColor, wrap: true);
+            if (recipe != null && building.Queued > 0)
+            {
+                Rect progress = Inset(rect, 13, 134, 2);
+                Fill(progress, Slot);
+                progress.width *= Mathf.Clamp01(building.ProcessProgress / run.ProductionDuration(building));
+                Fill(progress, BrightGold);
+            }
 
             Rect left = new(rect.x + 13, rect.y + 140, 150, 33), right = new(rect.x + 170, rect.y + 140, 150, 33);
             if (generator || miner)
@@ -575,6 +594,10 @@ namespace Zombs
                 Text(Inset(rect, 13, 143, 30), "Selected range shown on terrain.", 14, MutedText);
             if (miner && Button(Inset(rect, 13, 178, 28), "Collect deposit", Green, 15, building.Stored > 0))
                 run.Collect(building);
+            else if (recipe != null)
+                Text(Inset(rect, 13, 178, 28), tier < 3 ? "Tier III unlocks nearby input transfer" :
+                    building.Kind == BuildingKind.Smelter ? $"Auto-feed: iron Miner within {RunState.ProductionTransferRange:0} m" :
+                    $"Auto-feed: Smelter within {RunState.ProductionTransferRange:0} m + carried wood", 14, MutedText);
             else if (generator && upgradeable)
                 Text(Inset(rect, 13, 178, 25), $"Next  /  Radius {building.Data.Range(tier + 1):0}   Tank {TimeLeft(building.Data.fuelCapacity[tier])}   Tier {Roman[tier]}",
                     14, MutedText);

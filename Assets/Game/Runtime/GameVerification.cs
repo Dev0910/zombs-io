@@ -19,7 +19,8 @@ namespace Zombs
         {
             public string Directory;
             public float Speed, BaseSpeed, StageAge, ServiceClock, CaptureClock;
-            public int MotionFrames;
+            public int MotionFrames, HarvestFrames;
+            public float HarvestCaptureClock;
             public readonly List<float> FrameTimes = new();
             public readonly List<float> CapturingFrameTimes = new();
             public GameCatalog ArtCatalog;
@@ -44,7 +45,11 @@ namespace Zombs
             bool firstBoss = args.Contains("-zombs-first-boss");
             float speed = args.Contains("-zombs-fast") || firstBoss ? 20 : 1;
             bool artMotion = args.Contains("-zombs-art-motion");
-            if (artMotion) Directory.CreateDirectory(Path.Combine(output, "motion"));
+            if (artMotion)
+            {
+                Directory.CreateDirectory(Path.Combine(output, "motion"));
+                Directory.CreateDirectory(Path.Combine(output, "harvest-motion"));
+            }
             verification = new Verification
             {
                 Directory = output, Speed = speed, BaseSpeed = speed, FirstBoss = firstBoss,
@@ -99,6 +104,22 @@ namespace Zombs
                     AdvanceVerification(Checkpoint.Wood, "Placed a fueled generator through the placement tool.");
                     break;
                 case Checkpoint.Wood:
+                    if (verification.ArtMotion && verification.StageAge <= 3)
+                    {
+                        verification.Speed = 1;
+                        elapsed = frame;
+                        verification.HarvestCaptureClock += frame;
+                        if (verification.HarvestCaptureClock >= 1f / 12f)
+                        {
+                            verification.HarvestCaptureClock -= 1f / 12f;
+                            SaveVerificationFrame($"harvest-motion/frame-{verification.HarvestFrames++:D3}");
+                        }
+                    }
+                    else if (verification.ArtMotion)
+                    {
+                        verification.Speed = verification.BaseSpeed;
+                        elapsed = frame * verification.Speed;
+                    }
                     cursor = run.Nodes[0].Position;
                     attack = true;
                     if (run.Resources.wood >= 150) AdvanceVerification(Checkpoint.ToStone, $"Gathered {run.Resources.wood:0} wood.");
@@ -272,6 +293,11 @@ namespace Zombs
                     }
                     break;
                 case Checkpoint.Refill:
+                    if (verification.ArtReview && !verification.Captured)
+                    {
+                        verification.Captured = true;
+                        SaveVerificationFrame("09b-power-restored");
+                    }
                     if (!run.CanBreathe || !run.GeneratorOnline)
                         FinishVerification(false, "Fuel did not restore the oxygen zone.");
                     else if (run.Breath >= catalog.breathSeconds)

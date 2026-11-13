@@ -18,6 +18,8 @@ See the [project backlog](BACKLOG.md) for current development priorities.
 4. Build a **Smelter (9)**. Queue two iron ore per plate and collect the result. Use two plates to build an **Assembler (M)**. Queue one plate and one wood per part.
 5. Spend parts on weapon, defense, and generator upgrades. Generator upgrades expand the air radius and tank and raise the building tier limit. Tier II unlocks the **Miner (0)**. Place it next to a deposit, fuel it, and collect what it extracts.
 
+At Tier III, a Smelter pulls iron directly from a nearby iron Miner, and an Assembler pulls plates directly from a nearby Smelter. Upgrade each receiving machine to Tier III and keep the machines within 6 world units center to center. The Assembler draws wood from your inventory for each automatic job. Miner fuel and finished-part collection stay manual.
+
 Ore and stone occur in deposits that deplete. Starter materials are close to the placement area. The tree beside the starting point provides renewable emergency fuel.
 
 ## Controls
@@ -42,4 +44,4 @@ Open this folder in Unity **6000.4.9f1**, open [Survival.unity](Assets/Game/Surv
 
 Use **Zombs → Build Windows x64** to rebuild. Run the Edit Mode suite in Unity Test Runner. The development build accepts **-zombs-playthrough <output-folder>** to run the opening through two nights, an iron trip, production, the Miner unlock, and recovery from an empty tank. Add **-zombs-fast** for an accelerated check. **-zombs-first-boss** also runs a separate defense scenario with supplied build materials and returns to normal speed before the first boss.
 
-Add **-zombs-art-review** to capture title settings, valid and blocked placement, production, all shop tabs, every building type, a dense-wave fixture, and both loss screens. **-zombs-art-motion** also records a short normal-speed fight as a frame sequence.
+Add **-zombs-art-review** to capture title settings, valid and blocked placement, production, oxygen recovery, all shop tabs, every building type, a dense-wave fixture, and both loss screens. **-zombs-art-motion** also captures short normal-speed harvesting and combat sequences. The Sound setting controls both action cues and ambience.

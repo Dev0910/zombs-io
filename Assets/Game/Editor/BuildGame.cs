@@ -58,6 +58,12 @@ namespace Zombs
 
         public static void BuildVerification() => Build("Builds/Verification/Zombs Verification.exe", BuildOptions.Development);
 
+        public static void BuildPlayers()
+        {
+            BuildVerification();
+            BuildWindows();
+        }
+
         [MenuItem("Zombs/Restore Default Balance")]
         public static void RestoreDefaultBalance()
         {
@@ -76,8 +82,7 @@ namespace Zombs
         public static void PrepareVerification()
         {
             RestoreDefaultBalance();
-            BuildVerification();
-            BuildWindows();
+            BuildPlayers();
         }
 
         private static void Build(string path, BuildOptions options)

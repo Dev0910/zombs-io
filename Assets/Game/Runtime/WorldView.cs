@@ -5,12 +5,14 @@ namespace Zombs
 {
     internal sealed class WorldView
     {
-        private sealed class Burst
+        private struct Burst
         {
             public Effect Effect;
+            public Vector2 Point;
             public float Time, Duration;
         }
 
+        private const int MaxBursts = 48;
         private static readonly Color DayGround = new(.96f, 1, 1);
         private static readonly Color NightGround = new(.57f, .69f, .90f);
         private static readonly Color NightObjects = new(.76f, .83f, .99f);
@@ -23,7 +25,7 @@ namespace Zombs
         private readonly Transform root;
         private readonly SpriteRenderer ground;
         private readonly List<SpriteRenderer> parts = new();
-        private readonly List<Burst> bursts = new();
+        private readonly List<Burst> bursts = new(MaxBursts);
         private RunState run;
         private Vector2 lastPlayer;
         private int used;
@@ -64,16 +66,24 @@ namespace Zombs
                 swing = .22f;
                 return;
             }
+            if (effect.Kind is EffectKind.WaveStarted or EffectKind.BossStarted or EffectKind.Defeated) return;
+            if (effect.Kind == EffectKind.Damage && (effect.Point - run.Player).sqrMagnitude > 1.4f) return;
+            float height = camera.orthographicSize;
+            if (!Visible(effect.Point, run.Player, height * camera.aspect, height)) return;
             if (effect.Kind == EffectKind.Gain)
                 bursts.RemoveAll(burst => burst.Effect.Kind == EffectKind.Gain);
-            if (bursts.Count == 80) bursts.RemoveAt(0);
+            if (bursts.Count >= MaxBursts) bursts.RemoveAt(0);
             float duration = effect.Kind switch
             {
                 EffectKind.Explosion => .44f,
                 EffectKind.Placed or EffectKind.Upgraded => .48f,
+                EffectKind.Harvested => .29f,
+                EffectKind.Refueled or EffectKind.PowerRestored or EffectKind.PowerLost or EffectKind.ProductionReady => .52f,
                 _ => effect.Text != null ? .57f : .23f
             };
-            bursts.Add(new Burst { Effect = effect, Time = duration, Duration = duration });
+            Vector2 point = effect.Point;
+            if (effect.Kind == EffectKind.Harvested) point += (run.Player - point).normalized * .44f;
+            bursts.Add(new Burst { Effect = effect, Point = point, Time = duration, Duration = duration });
         }
 
         public void Draw(float dt, bool intro, BuildingKind? placing, int rotation, Structure selected, bool healing, Vector2 cursor)
@@ -102,6 +112,11 @@ namespace Zombs
 
             DrawTerrain(center, width, height);
             DrawCoverage(placing);
+            if (run.GeneratorOnline)
+            {
+                float strength = Mathf.Lerp(.11f, .46f, run.LightBlend);
+                Part(SpriteArt.Glow, run.OxygenCenter, Vector2.one * 13, 0, -58, WithAlpha(Air, strength));
+            }
             if (placing.HasValue) DrawPlacement(placing.Value, rotation, cursor);
 
             foreach (var node in run.Nodes)
@@ -120,9 +135,10 @@ namespace Zombs
             {
                 if (!Visible(building.Position, center, width, height)) continue;
                 float size = building.Data.size;
-                Part(SpriteArt.FootprintShadow, building.Position + new Vector2(.09f, -.12f), Vector2.one * size * 1.08f,
-                    0, 1, Color.white);
-                DrawBuilding(building.Kind, building.Tier, building.Position, building.Angle, Color.white, 5);
+                Part(SpriteArt.Shadow, building.Position + new Vector2(.10f, -.17f), new Vector2(size * 1.16f, size * .94f),
+                    0, 1, new Color(1, 1, 1, .78f));
+                DrawBuilding(building.Kind, building.Tier, building.Position, building.Angle, Color.white, 5,
+                    SpriteArt.IsTower(building.Kind) ? TowerRecoil(building) : 0);
                 DrawMachineState(building);
                 if (building.Health < building.MaximumHealth * .98f)
                     Bar(building.Position + Vector2.down * (size * .49f), size * .78f, .12f,
@@ -263,13 +279,17 @@ namespace Zombs
         private void RangeCircle(Vector2 point, float radius) =>
             Zone(point, radius, new Color(Amber.r, Amber.g, Amber.b, .53f), .05f, true, 1);
 
-        private void DrawBuilding(BuildingKind kind, int tier, Vector2 position, float angle, Color color, int layer)
+        private void DrawBuilding(BuildingKind kind, int tier, Vector2 position, float angle, Color color, int layer, float recoil = 0)
         {
             float size = run.Catalog.Building(kind).size;
             Part(SpriteArt.Base(kind, tier), position, Vector2.one * size, 0, layer, color);
             if (SpriteArt.IsTower(kind))
-                Part(SpriteArt.Turret(kind, tier), position, Vector2.one * size, angle, layer + 1, color);
+                Part(SpriteArt.Turret(kind, tier), position - RunState.Direction(angle) * recoil,
+                    Vector2.one * size, angle, layer + 1, color);
         }
+
+        private static float TowerRecoil(Structure building) =>
+            .18f * Mathf.Clamp01(1 - (building.Data.interval - building.Cooldown) / .12f);
 
         private void DrawMachineState(Structure building)
         {
@@ -315,10 +335,37 @@ namespace Zombs
                 Part(SpriteArt.Rotor, position + Vector2.up * .08f, Vector2.one * .98f, clock * 32, 8,
                     new Color(Air.r, Air.g, Air.b, .34f + pulse * .2f));
             }
-            else
+            else DrawProductionMotion(building, pulse);
+        }
+
+        private void DrawProductionMotion(Structure building, float pulse)
+        {
+            Vector2 point = building.Position;
+            float phase = clock + point.x * .29f + point.y * .13f;
+            switch (building.Kind)
             {
-                Part(SpriteArt.Pixel, position + new Vector2(-.37f + Mathf.Repeat(clock * .36f, .63f), -.45f),
-                    new Vector2(.12f, .04f), 0, 8, new Color(Amber.r, Amber.g, Amber.b, .5f + pulse * .4f));
+                case BuildingKind.Smelter:
+                    Part(SpriteArt.Glow, point + Vector2.up * .12f, Vector2.one * .82f, 0, 8, WithAlpha(Amber, .29f + pulse * .34f));
+                    for (int vent = 0; vent < 2; vent++)
+                    {
+                        float lift = Mathf.Repeat(phase * 1.15f + vent * .5f, 1);
+                        Vector2 offset = new((vent == 0 ? -.26f : .26f) + lift * .13f, .78f + lift * .44f);
+                        Part(SpriteArt.Glow, point + offset, Vector2.one * Mathf.Lerp(.25f, .58f, lift), 0, 7,
+                            WithAlpha(Armor, .35f * (1 - lift)));
+                    }
+                    break;
+                case BuildingKind.Assembler:
+                    float travel = Mathf.PingPong(phase * .85f, .72f);
+                    Vector2 head = point + new Vector2(-.43f + travel, -.19f);
+                    Part(SpriteArt.Pixel, head, new Vector2(.18f, .24f), 0, 8, Armor);
+                    Part(SpriteArt.Glow, head + Vector2.down * .10f, Vector2.one * .45f, 0, 9, WithAlpha(Air, .67f));
+                    break;
+                case BuildingKind.Miner:
+                    float stripe = Mathf.Repeat(phase * 3.4f, 1);
+                    Vector2 drill = point + new Vector2(0, Mathf.Lerp(.10f, -.58f, stripe));
+                    Part(SpriteArt.Pixel, drill, new Vector2(Mathf.Lerp(.41f, .18f, stripe), .068f), 18, 8,
+                        WithAlpha(Armor, .55f + pulse * .26f));
+                    break;
             }
         }
 
@@ -332,9 +379,15 @@ namespace Zombs
                 Part(SpriteArt.Limb, point + right * (.27f * side) - run.Aim * (.40f + gait * .15f * side),
                     new Vector2(.28f, .40f), angle, 24, Armor);
             Part(SpriteArt.Suit, point, Vector2.one * (1.59f + Mathf.Abs(gait) * .026f), angle, 25, Color.white);
-            float arc = swing > 0 ? Mathf.Sin(swing / .22f * Mathf.PI) * 63 : 0;
+            float swingProgress = swing > 0 ? Mathf.Sin(swing / .22f * Mathf.PI) : 0;
+            bool melee = run.Weapon is ItemKind.Pickaxe or ItemKind.Spear;
+            float arc = swingProgress * (melee ? 63 : 10);
             Vector2 direction = RunState.Direction(angle + 20 - arc);
-            Part(SpriteArt.Item(run.Weapon, run.ItemTier(run.Weapon)), point + direction * .86f + right * .16f,
+            Vector2 toolPoint = point + direction * (.86f - (melee ? 0 : swingProgress * .11f)) + right * .16f;
+            if (melee && swingProgress > .05f)
+                Part(SpriteArt.SwingTrail, point + run.Aim * .13f, Vector2.one * 2.8f, angle + 18 - arc, 26,
+                    WithAlpha(Armor, swingProgress * .55f));
+            Part(SpriteArt.Item(run.Weapon, run.ItemTier(run.Weapon)), toolPoint,
                 Vector2.one * 1.04f, angle + 18 - arc, 27, Color.white);
             if (run.WearingHat)
                 Part(SpriteArt.Hat, point + run.Aim * .19f, Vector2.one * .84f, angle, 28, Color.white);
@@ -358,7 +411,10 @@ namespace Zombs
                 Part(SpriteArt.Limb, point + right * (size * .23f * side) - forward * (size * (.29f + .09f * side * pace)),
                     new Vector2(size * .25f, size * .36f), enemy.Angle + side * 12, 15, new Color(.56f, .50f, .44f));
             int variant = enemy.Neutral ? 1 : (Mathf.RoundToInt(enemy.Color.r * 19) % 3);
-            Part(SpriteArt.Infected(variant, enemy.Boss), point, Vector2.one * size, enemy.Angle + pace * 5, 16, tint);
+            float flinch = Mathf.Clamp01(enemy.Flash / .14f);
+            Vector2 body = point - forward * (size * .10f * flinch);
+            Part(SpriteArt.Infected(variant, enemy.Boss), body, new Vector2(size * (1 + flinch * .06f), size * (1 - flinch * .07f)),
+                enemy.Angle + pace * 5, 16, tint);
             if (enemy.Boss)
             {
                 Part(SpriteArt.ThreatMarker, point + Vector2.up * (size * .72f), Vector2.one * .37f, 0, 19, Color.white);
@@ -384,32 +440,64 @@ namespace Zombs
                     bursts.RemoveAt(i);
                     continue;
                 }
-                Vector2 point = burst.Effect.Point;
+                bursts[i] = burst;
+                Vector2 point = burst.Point;
                 if (!Visible(point, center, width, height)) continue;
                 float life = burst.Time / burst.Duration, age = 1 - life;
-                if (burst.Effect.Kind == EffectKind.Explosion)
+                switch (burst.Effect.Kind)
                 {
-                    Part(SpriteArt.Circle, point, Vector2.one * Mathf.Lerp(.44f, 1.6f, age), 0, 34, new Color(1, .59f, .36f, life * .23f));
-                    Part(SpriteArt.Outline, point, Vector2.one * Mathf.Lerp(.5f, 3.15f, age), 0, 34, new Color(1, .74f, .44f, life * .72f));
-                    Sparks(point, age, life, 7, 1.6f, Amber);
+                    case EffectKind.Harvested:
+                        Color material = burst.Effect.Material switch
+                        {
+                            ResourceKind.Wood => new Color(.74f, .77f, .48f),
+                            ResourceKind.Iron => new Color(.98f, .63f, .37f),
+                            ResourceKind.Coal => new Color(.56f, .64f, .70f),
+                            _ => Armor
+                        };
+                        Part(SpriteArt.Glow, point, Vector2.one * Mathf.Lerp(.46f, 1.28f, age), 0, 32, WithAlpha(material, life * .55f));
+                        Sparks(point, age, life, 5, .96f, material, SpriteArt.Chip);
+                        break;
+                    case EffectKind.Explosion:
+                        Part(SpriteArt.Glow, point, Vector2.one * Mathf.Lerp(1.7f, 3.2f, age), 0, 13, WithAlpha(Amber, life * .62f));
+                        Part(SpriteArt.Outline, point, Vector2.one * Mathf.Lerp(.5f, 2.6f, age), 0, 13, WithAlpha(Amber, life * .54f));
+                        Sparks(point, age, life, 6, 1.5f, Amber);
+                        break;
+                    case EffectKind.Impact:
+                        Sparks(point, age, life, 3, .53f, Amber);
+                        break;
+                    case EffectKind.Placed:
+                        Part(SpriteArt.Glow, point, Vector2.one * Mathf.Lerp(1.4f, 3.3f, age), 0, 2, WithAlpha(Air, life * .55f));
+                        Sparks(point, age, life, 6, 1.42f, Air, SpriteArt.Chip);
+                        break;
+                    case EffectKind.Upgraded:
+                        Part(SpriteArt.Rotor, point, Vector2.one * Mathf.Lerp(.72f, 2.35f, age), clock * 100, 34, WithAlpha(Air, life * .53f));
+                        break;
+                    case EffectKind.PowerLost:
+                    case EffectKind.PowerRestored:
+                    case EffectKind.ProductionReady:
+                    case EffectKind.Refueled:
+                        Color status = burst.Effect.Kind == EffectKind.PowerLost ? Coral : Air;
+                        Part(SpriteArt.Glow, point, Vector2.one * Mathf.Lerp(.8f, 2.9f, age), 0, 8, WithAlpha(status, life * .65f));
+                        Sparks(point, age, life, 4, 1.04f, status);
+                        break;
                 }
-                else if (burst.Effect.Kind is EffectKind.Impact or EffectKind.Gain)
-                    Sparks(point, age, life, 4, .63f, Amber);
-                else if (burst.Effect.Kind is EffectKind.Placed or EffectKind.Upgraded)
-                    Part(SpriteArt.Rotor, point, Vector2.one * Mathf.Lerp(.72f, 2.35f, age), clock * 100, 34, new Color(Air.r, Air.g, Air.b, life * .53f));
             }
         }
 
-        private void Sparks(Vector2 center, float age, float life, int count, float reach, Color accent)
+        private void Sparks(Vector2 center, float age, float life, int count, float reach, Color accent, Sprite shape = null)
         {
             for (int i = 0; i < count; i++)
             {
-                float angle = i * (360f / count) + center.x * 33;
-                Vector2 point = center + RunState.Direction(angle) * Mathf.Lerp(.15f, reach, age);
-                Part(SpriteArt.Pixel, point, new Vector2(.04f, .10f + .13f * life), angle, 35,
-                    new Color(accent.r, accent.g, accent.b, life * .75f));
+                float angle = i * (360f / count) + center.x * 33 + center.y * 15;
+                Vector2 point = center + RunState.Direction(angle) * Mathf.Lerp(.12f, reach * (i % 2 == 0 ? 1 : .76f), 1 - life * life);
+                if (shape == null)
+                    Part(SpriteArt.Pixel, point, new Vector2(.052f, .08f + .15f * life), angle, 35, WithAlpha(accent, life * .84f));
+                else
+                    Part(shape, point, Vector2.one * (.09f + .10f * life), angle + age * 115, 35, WithAlpha(accent, life));
             }
         }
+
+        private static Color WithAlpha(Color color, float alpha) => new(color.r, color.g, color.b, alpha);
 
         public void DrawLabels(System.Action<Vector2, string, Color> text)
         {

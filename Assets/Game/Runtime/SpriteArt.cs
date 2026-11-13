@@ -29,16 +29,16 @@ namespace Zombs
             {
                 const string key = "basalt";
                 if (Sprites.TryGetValue(key, out var sprite)) return sprite;
-                const int size = 512;
+                const int size = 1024;
                 var pixels = new Color32[size * size];
                 var random = new System.Random(8517);
                 for (int y = 0; y < size; y++)
                 for (int x = 0; x < size; x++)
                 {
                     float u = x / (float)(size - 1), v = y / (float)(size - 1);
-                    float broad = TileNoise(u, v, 4.5f, 2.1f);
-                    float fine = TileNoise(u, v, 21f, 11.4f);
-                    int shade = Mathf.RoundToInt(broad * 22 + fine * 8 + random.Next(-2, 3));
+                    float broad = TileNoise(u, v, 12.5f, 2.1f);
+                    float fine = TileNoise(u, v, 54f, 11.4f);
+                    int shade = Mathf.RoundToInt(broad * 15 + fine * 8 + random.Next(-2, 3));
                     pixels[y * size + x] = C((byte)(24 + shade), (byte)(31 + shade), (byte)(37 + shade));
                 }
 
@@ -48,7 +48,7 @@ namespace Zombs
                 };
                 texture.SetPixels32(pixels);
                 texture.Apply(true, true);
-                sprite = Sprite.Create(texture, new Rect(0, 0, size, size), Vector2.one * .5f, size / 8f, 0, SpriteMeshType.FullRect);
+                sprite = Sprite.Create(texture, new Rect(0, 0, size, size), Vector2.one * .5f, size / 24f, 0, SpriteMeshType.FullRect);
                 Sprites.Add(key, sprite);
                 return sprite;
             }
@@ -278,13 +278,6 @@ namespace Zombs
             a.Poly(C(255, 146, 131), 26, 94, 102, 94, 64, 31);
         });
 
-        public static Sprite FootprintShadow => Get("structure-shadow", a =>
-        {
-            Plate(a, 1, 1, 127, 127, 15, new Color32(4, 9, 14, 39));
-            Plate(a, 5, 5, 123, 123, 13, new Color32(4, 9, 14, 73));
-            Plate(a, 10, 10, 118, 118, 11, new Color32(4, 9, 14, 128));
-        });
-
         public static Sprite ThreatMarker => Get("threat-marker", a =>
         {
             a.Poly(Ink, 64, 122, 124, 64, 64, 6, 4, 64);
@@ -296,97 +289,101 @@ namespace Zombs
         public static Sprite Base(BuildingKind kind, int tier) => Get($"base-{kind}-{tier}", a =>
         {
             Color32 metal = Tiers[tier - 1];
-            Plate(a, 2, 2, 126, 126, 13, Ink);
-            Plate(a, 6, 10, 122, 123, 12, Dark(metal, .67f));
-            Plate(a, 7, 17, 121, 122, 11, metal);
-            Plate(a, 13, 23, 115, 116, 8, Recess);
-            a.Stroke(19, 119, 109, 119, 2, Edge);
-            a.Stroke(19, 13, 109, 13, 2, Ink);
-            foreach (int x in new[] { 17, 111 })
-            foreach (int y in new[] { 20, 109 })
-            {
-                a.Disc(x, y, 5, Ink);
-                a.Disc(x, y + 1, 2.1f, Edge);
-            }
-
             switch (kind)
             {
                 case BuildingKind.Wall:
-                    Plate(a, 20, 27, 108, 107, 8, Alloy);
-                    a.Stroke(24, 96, 105, 96, 4, Edge);
-                    for (int y = 39; y < 89; y += 15) a.Box(28, y, 100, y + 4, 1, Recess);
+                    Housing(a, 3, 23, 125, 107, 14, metal);
+                    a.Poly(Ivory, 17, 62, 31, 91, 96, 91, 111, 62);
+                    a.Poly(Alloy, 17, 62, 111, 62, 94, 42, 34, 42);
+                    a.Stroke(41, 72, 54, 85, 5, Recess);
+                    a.Stroke(74, 72, 87, 85, 5, Recess);
                     break;
                 case BuildingKind.Door:
-                    Plate(a, 23, 21, 105, 111, 8, Dark(Alloy, .88f));
-                    a.Box(60, 24, 68, 107, 1, Ink);
-                    a.Stroke(36, 82, 55, 65, 6, Cyan);
-                    a.Stroke(93, 82, 74, 65, 6, Cyan);
+                    Housing(a, 3, 24, 125, 107, 11, metal);
+                    Plate(a, 24, 34, 61, 96, 7, Ivory);
+                    Plate(a, 67, 34, 104, 96, 7, Ivory);
+                    a.Stroke(38, 72, 52, 61, 5, Recess);
+                    a.Stroke(90, 72, 76, 61, 5, Recess);
+                    a.Stroke(62, 50, 66, 50, 6, Cyan);
                     break;
                 case BuildingKind.SlowTrap:
+                    a.Poly(Ink, 3, 64, 64, 4, 125, 64, 64, 124);
+                    a.Poly(metal, 12, 64, 64, 12, 116, 64, 64, 116);
+                    a.Ring(64, 64, 29, 4, Recess);
+                    a.Annulus(64, 64, 20, 5, Violet);
                     foreach (int x in new[] { 38, 90 })
                     foreach (int y in new[] { 40, 90 })
                     {
-                        a.Disc(x, y, 15, Alloy);
-                        a.Annulus(x, y, 11, 3, Violet);
+                        a.Ring(x, y, 11, 3, Ivory);
                     }
                     break;
                 case BuildingKind.Generator:
-                    a.Stroke(27, 64, 27, 101, 9, Alloy);
-                    a.Stroke(101, 37, 101, 71, 9, Alloy);
-                    a.Stroke(25, 76, 25, 98, 3, C(101, 171, 175));
-                    a.Stroke(103, 43, 103, 69, 3, Edge);
-                    a.Ring(64, 69, 43, 6, Alloy);
+                    Housing(a, 7, 8, 121, 122, 34, metal);
+                    a.Ring(64, 69, 43, 5, Ivory);
                     a.Ring(64, 69, 33, 5, C(65, 124, 134));
                     a.Disc(64, 69, 23, C(73, 183, 180));
                     a.Disc(61, 73, 16, Cyan);
                     a.Stroke(50, 78, 64, 84, 3, Ivory);
-                    a.Box(42, 21, 86, 28, 2, C(64, 98, 107));
+                    a.Box(42, 21, 86, 29, 2, Recess);
+                    a.Box(49, 23, 60, 27, 1, Amber);
+                    a.Box(69, 23, 80, 27, 1, Amber);
                     break;
                 case BuildingKind.Smelter:
-                    for (int y = 49; y <= 96; y += 12)
-                    {
-                        a.Stroke(17, y, 32, y, 5, Alloy);
-                        a.Stroke(97, y, 111, y, 5, Alloy);
-                    }
-                    Plate(a, 25, 31, 103, 106, 10, Alloy);
-                    Plate(a, 32, 42, 96, 98, 7, Ink);
-                    a.Poly(Amber, 40, 48, 53, 79, 64, 66, 77, 90, 88, 48);
-                    a.Stroke(37, 35, 91, 35, 4, Edge);
+                    Housing(a, 29, 70, 58, 125, 6, metal);
+                    Housing(a, 70, 70, 99, 125, 6, metal);
+                    a.Box(35, 110, 53, 119, 2, Ink);
+                    a.Box(75, 110, 93, 119, 2, Ink);
+                    Housing(a, 13, 12, 115, 101, 23, metal);
+                    a.Ring(64, 57, 33, 5, C(164, 107, 67));
+                    Plate(a, 39, 38, 89, 76, 8, Ink);
+                    a.Box(46, 47, 82, 66, 4, Amber);
+                    for (int x = 52; x <= 76; x += 12) a.Stroke(x, 48, x, 66, 4, Recess);
                     break;
                 case BuildingKind.Assembler:
-                    Plate(a, 22, 31, 106, 104, 8, Alloy);
-                    a.Stroke(23, 68, 23, 94, 4, Edge);
-                    a.Stroke(106, 37, 106, 61, 4, Edge);
-                    a.Box(29, 37, 98, 60, 3, Recess);
-                    a.Box(40, 43, 84, 54, 2, Cyan);
-                    a.Stroke(35, 89, 58, 76, 14, Ink);
-                    a.Stroke(35, 89, 58, 76, 8, Amber);
-                    a.Stroke(59, 76, 79, 65, 8, Amber);
-                    a.Stroke(79, 65, 87, 73, 4, Edge);
+                    Housing(a, 13, 15, 115, 67, 8, metal);
+                    a.Box(23, 25, 105, 53, 3, Ink);
+                    for (int x = 30; x <= 98; x += 13) a.Stroke(x, 30, x, 49, 4, Edge);
+                    a.Stroke(31, 41, 94, 41, 3, Cyan);
+                    Housing(a, 9, 66, 51, 111, 10, metal);
+                    a.Stroke(30, 87, 62, 108, 18, Ink);
+                    a.Stroke(62, 108, 93, 68, 19, Ink);
+                    a.Stroke(30, 87, 62, 108, 11, Ivory);
+                    a.Stroke(62, 108, 93, 68, 11, Ivory);
+                    a.Ring(62, 108, 8, 3, Amber);
+                    a.Box(87, 56, 103, 71, 3, Alloy);
                     break;
                 case BuildingKind.Miner:
-                    Plate(a, 21, 27, 107, 108, 7, Alloy);
-                    a.Box(24, 31, 43, 103, 3, Ink);
-                    a.Box(85, 31, 104, 103, 3, Ink);
-                    for (int y = 37; y < 99; y += 12)
+                    Housing(a, 6, 19, 41, 110, 11, metal);
+                    Housing(a, 87, 19, 122, 110, 11, metal);
+                    for (int y = 32; y < 99; y += 12)
                     {
-                        a.Box(28, y, 40, y + 4, 1, Edge);
-                        a.Box(89, y, 101, y + 4, 1, Edge);
+                        a.Box(10, y, 35, y + 4, 1, Recess);
+                        a.Box(93, y, 118, y + 4, 1, Recess);
                     }
-                    a.Poly(Amber, 52, 44, 76, 44, 76, 77, 64, 98, 52, 77);
-                    a.Stroke(54, 59, 75, 68, 3, Recess);
-                    a.Stroke(54, 70, 75, 79, 3, Recess);
+                    Housing(a, 28, 59, 100, 108, 12, metal);
+                    a.Box(47, 84, 81, 96, 2, Ivory);
+                    a.Poly(Ink, 42, 76, 86, 76, 85, 31, 64, 4, 43, 31);
+                    a.Poly(Amber, 48, 70, 80, 70, 79, 33, 64, 13, 49, 33);
+                    for (int y = 29; y <= 56; y += 12) a.Stroke(52, y, 76, y + 10, 5, Recess);
                     break;
                 default:
-                    a.Ring(64, 66, 39, 4, Dark(metal, .7f));
-                    a.Annulus(64, 66, 32, 2, Edge);
-                    a.Box(40, 27, 88, 31, 2, TowerAccent(kind));
+                    a.Ring(64, 57, kind is BuildingKind.Cannon or BuildingKind.Bomb ? 46 : 39, 5, Dark(metal, .75f));
+                    a.Annulus(64, 59, 31, 3, Edge);
+                    a.Box(47, 22, 81, 28, 2, TowerAccent(kind));
                     break;
             }
 
             for (int index = 0; index < tier - 1; index++)
                 a.Box(34 + index * 9, 14, 39 + index * 9, 18, 1, Ivory);
         });
+
+        private static void Housing(Canvas a, int left, int bottom, int right, int top, int cut, Color32 metal)
+        {
+            Plate(a, left, bottom, right, top, cut, Ink);
+            Plate(a, left + 4, bottom + 4, right - 4, top - 4, cut - 2, Dark(metal, .7f));
+            Plate(a, left + 4, bottom + 11, right - 4, top - 4, cut - 2, metal);
+            a.Stroke(left + cut + 1, top - 7, right - cut - 1, top - 7, 3, Edge);
+        }
 
         public static Sprite Turret(BuildingKind kind, int tier) => Get($"turret-{kind}-{tier}", a =>
         {
@@ -397,34 +394,42 @@ namespace Zombs
             switch (kind)
             {
                 case BuildingKind.Arrow:
-                    a.Stroke(42, 41, 42, 102, 10, Ink);
-                    a.Stroke(86, 41, 86, 102, 10, Ink);
-                    a.Stroke(42, 52, 42, 98, 4, accent);
-                    a.Stroke(86, 52, 86, 98, 4, accent);
-                    a.Stroke(44, 68, 84, 68, 7, Alloy);
-                    Barrel(a, 55, 65, 73, 119, accent);
+                    a.Stroke(18, 75, 110, 75, 3, accent);
+                    a.Poly(Ink, 13, 69, 25, 95, 64, 106, 103, 95, 115, 69, 92, 85, 64, 92, 36, 85);
+                    a.Poly(Ivory, 21, 76, 29, 91, 64, 100, 99, 91, 107, 76, 90, 89, 64, 96, 38, 89);
+                    Barrel(a, 55, 50, 73, 121, accent);
                     break;
                 case BuildingKind.Cannon:
-                    Barrel(a, 48, 62, 80, 114, accent);
-                    a.Box(52, 99, 76, 112, 1, Ink);
+                    Housing(a, 32, 39, 96, 87, 12, metal);
+                    Barrel(a, 48, 58, 80, 112, accent);
+                    a.Box(42, 103, 86, 122, 4, Ink);
+                    a.Box(47, 110, 81, 118, 2, Ivory);
+                    a.Box(55, 109, 73, 115, 2, Recess);
                     break;
                 case BuildingKind.Melee:
-                    a.Stroke(25, 67, 103, 67, 10, Ink);
-                    a.Stroke(25, 67, 103, 67, 4, accent);
-                    a.Poly(Ink, 49, 67, 51, 109, 64, 124, 77, 109, 79, 67);
-                    a.Poly(Ivory, 55, 70, 56, 107, 64, 116, 72, 107, 73, 70);
+                    a.Stroke(38, 56, 91, 56, 13, Ink);
+                    a.Stroke(38, 56, 91, 56, 7, Amber);
+                    a.Poly(Ink, 49, 54, 52, 99, 81, 123, 83, 87, 71, 54);
+                    a.Poly(accent, 56, 60, 58, 96, 76, 113, 76, 87, 66, 60);
+                    a.Stroke(66, 67, 70, 98, 4, Alloy);
                     break;
                 case BuildingKind.Bomb:
-                    for (int x = 49; x <= 79; x += 15)
+                    Housing(a, 24, 52, 104, 109, 10, metal);
+                    for (int x = 43; x <= 85; x += 21)
                     {
-                        a.Ring(x, 80, 14, 4, accent);
-                        a.Disc(x, 80, 6, Ink);
+                        a.Ring(x, 95, 12, 4, Ivory);
+                        a.Disc(x, 95, 5, Ink);
                     }
+                    a.Stroke(39, 69, 89, 69, 6, accent);
                     break;
                 case BuildingKind.Mage:
-                    a.Poly(Ink, 29, 79, 39, 113, 63, 100, 89, 113, 100, 79, 64, 58);
-                    a.Poly(accent, 36, 80, 42, 105, 60, 91, 89, 105, 93, 81, 64, 65);
-                    a.Disc(64, 86, 9, Ivory);
+                    a.Stroke(54, 54, 28, 99, 15, Ink);
+                    a.Stroke(74, 54, 100, 99, 15, Ink);
+                    a.Stroke(54, 54, 28, 99, 8, Ivory);
+                    a.Stroke(74, 54, 100, 99, 8, Ivory);
+                    a.Poly(Ink, 44, 87, 64, 122, 84, 87, 64, 66);
+                    a.Poly(accent, 51, 88, 64, 113, 77, 88, 64, 75);
+                    a.Poly(Ivory, 59, 88, 64, 108, 67, 86, 64, 79);
                     break;
             }
             a.Box(53, 43, 75, 49, 2, Edge);
@@ -449,41 +454,61 @@ namespace Zombs
             switch (item)
             {
                 case ItemKind.Pickaxe:
-                    a.Stroke(40, 12, 72, 92, 20, Ink);
-                    a.Stroke(41, 15, 70, 89, 10, Alloy);
-                    a.Poly(Ink, 13, 62, 28, 90, 67, 111, 111, 103, 119, 79, 91, 88, 57, 84);
-                    a.Poly(Ivory, 22, 72, 33, 87, 68, 105, 106, 98, 111, 87, 92, 94, 55, 90);
-                    a.Stroke(53, 91, 76, 99, 4, accent);
+                    a.Stroke(33, 17, 72, 88, 23, Ink);
+                    a.Stroke(35, 20, 72, 88, 13, Alloy);
+                    a.Stroke(35, 20, 47, 43, 15, Recess);
+                    a.Stroke(30, 19, 41, 13, 7, Ivory);
+                    a.Stroke(39, 41, 51, 34, 7, Amber);
+                    a.Poly(Ink, 9, 70, 29, 98, 67, 114, 105, 109, 123, 94, 118, 67, 101, 78, 91, 91, 65, 91, 37, 81);
+                    a.Poly(Alloy, 21, 77, 35, 94, 68, 107, 102, 102, 116, 91, 114, 77, 105, 83, 94, 97, 64, 97, 39, 86);
+                    a.Poly(Ivory, 21, 77, 35, 94, 67, 107, 71, 100, 44, 90);
+                    a.Poly(Ivory, 85, 105, 102, 102, 116, 91, 114, 77, 103, 92, 94, 97, 84, 99);
+                    a.Disc(72, 98, 10, Recess);
+                    a.Disc(72, 98, 4.5f, accent);
                     break;
                 case ItemKind.Spear:
-                    a.Stroke(24, 13, 90, 97, 14, Ink);
-                    a.Stroke(24, 14, 90, 96, 6, Alloy);
-                    a.Poly(Ink, 72, 71, 79, 108, 119, 122, 108, 83);
-                    a.Poly(accent, 78, 79, 85, 104, 112, 115, 103, 88);
+                    a.Stroke(17, 15, 89, 91, 19, Ink);
+                    a.Stroke(17, 15, 89, 91, 9, Edge);
+                    a.Stroke(26, 24, 51, 51, 15, Recess);
+                    a.Stroke(33, 24, 26, 32, 6, Amber);
+                    a.Stroke(46, 37, 39, 45, 6, Amber);
+                    a.Poly(Ink, 66, 62, 67, 90, 83, 109, 122, 123, 110, 84, 92, 64);
+                    a.Poly(Alloy, 74, 72, 76, 88, 88, 104, 114, 115, 103, 88, 88, 71);
+                    a.Poly(Ivory, 76, 88, 88, 104, 114, 115, 92, 92);
+                    a.Stroke(77, 78, 88, 89, 6, accent);
                     break;
                 case ItemKind.Bow:
-                    a.Stroke(27, 30, 101, 90, 8, Ink);
-                    a.Stroke(29, 32, 100, 89, 3, Cyan);
-                    a.Stroke(27, 29, 33, 69, 15, Ink);
-                    a.Stroke(33, 69, 65, 101, 15, Ink);
-                    a.Stroke(65, 101, 102, 92, 15, Ink);
-                    a.Stroke(28, 30, 34, 68, 7, Alloy);
-                    a.Stroke(34, 68, 65, 100, 7, Alloy);
-                    a.Stroke(65, 100, 101, 91, 7, Alloy);
-                    a.Stroke(41, 41, 84, 100, 6, Ivory);
+                    a.Stroke(18, 31, 103, 105, 7, Ink);
+                    a.Stroke(18, 31, 103, 105, 3.5f, Ivory);
+                    a.Poly(Ink, 11, 26, 9, 60, 24, 82, 47, 104, 76, 120, 108, 114, 116, 97, 100, 91, 89, 101,
+                        77, 102, 60, 89, 42, 73, 27, 57, 28, 37, 24, 23);
+                    a.Poly(Alloy, 16, 31, 15, 58, 28, 78, 50, 100, 77, 113, 105, 108, 108, 100, 102, 98, 91, 106,
+                        75, 108, 56, 94, 37, 77, 21, 59, 22, 36);
+                    a.Stroke(20, 57, 35, 78, 8, Ivory);
+                    a.Stroke(58, 102, 77, 112, 8, Ivory);
+                    a.Stroke(39, 80, 53, 94, 10, Recess);
+                    a.Disc(18, 34, 7, accent);
+                    a.Disc(103, 104, 7, accent);
                     break;
                 case ItemKind.Bomb:
-                    Plate(a, 24, 20, 104, 99, 20, Ink);
-                    Plate(a, 31, 27, 97, 92, 16, Alloy);
-                    a.Box(44, 83, 85, 112, 6, Recess);
-                    a.Box(42, 53, 86, 69, 2, Coral);
+                    a.Poly(Ink, 14, 31, 32, 15, 70, 11, 105, 30, 119, 60, 103, 89, 92, 96, 89, 111, 56, 119, 41, 101, 39, 88, 16, 71);
+                    a.Poly(Alloy, 22, 34, 36, 22, 68, 18, 100, 36, 111, 60, 97, 84, 70, 98, 46, 91, 23, 67);
+                    a.Poly(Ivory, 22, 54, 23, 67, 46, 91, 70, 98, 97, 84, 100, 75, 70, 83, 48, 76);
+                    a.Poly(Recess, 25, 41, 49, 61, 93, 74, 107, 65, 101, 50, 59, 36, 37, 26);
+                    a.Stroke(46, 40, 55, 52, 7, Amber);
+                    a.Stroke(63, 46, 73, 58, 7, Amber);
+                    a.Stroke(81, 51, 91, 63, 7, Amber);
+                    a.Poly(Edge, 47, 92, 48, 100, 59, 112, 82, 106, 85, 90, 67, 83);
+                    a.Stroke(59, 102, 76, 98, 7, Coral);
                     break;
                 case ItemKind.Shield:
-                    a.Poly(Ink, 12, 104, 64, 122, 116, 104, 105, 44, 64, 8, 23, 44);
-                    a.Poly(Alloy, 20, 98, 64, 113, 108, 98, 98, 48, 64, 18, 30, 48);
-                    a.Poly(Recess, 31, 90, 64, 101, 97, 90, 89, 55, 64, 32, 39, 55);
-                    a.Stroke(48, 72, 61, 58, 7, Cyan);
-                    a.Stroke(61, 58, 80, 81, 7, Cyan);
+                    a.Poly(Ink, 10, 93, 32, 116, 95, 116, 118, 93, 111, 48, 87, 20, 64, 9, 41, 20, 17, 48);
+                    a.Poly(Alloy, 18, 90, 36, 109, 92, 109, 110, 90, 104, 51, 82, 26, 64, 17, 46, 26, 24, 51);
+                    a.Poly(Ivory, 18, 90, 36, 109, 92, 109, 110, 90, 100, 84, 89, 96, 39, 96, 28, 84);
+                    a.Poly(Recess, 28, 82, 43, 94, 85, 94, 100, 82, 92, 54, 64, 30, 36, 54);
+                    a.Poly(Alloy, 34, 80, 64, 88, 94, 80, 64, 55);
+                    a.Stroke(52, 59, 64, 49, 7, accent);
+                    a.Stroke(64, 49, 76, 59, 7, accent);
                     break;
                 case ItemKind.HealthPotion:
                 case ItemKind.PetPotion:
@@ -552,6 +577,20 @@ namespace Zombs
         public static Sprite Outline => Get("outline", a => a.Annulus(64, 64, 60, 4, Paper));
         public static Sprite RangeOutline => AirBoundary(false);
         public static Sprite Pixel => Get("pixel", a => a.Box(0, 0, 128, 128, 0, Paper));
+        public static Sprite Chip => Get("chip", a => a.Poly(Paper, 16, 55, 41, 108, 103, 86, 110, 33, 54, 23), 32);
+        public static Sprite SwingTrail => Get("swing-trail", a =>
+        {
+            const int segments = 10;
+            Vector2 start = new(64, 64);
+            for (int index = 0; index <= segments; index++)
+            {
+                float fraction = index / (float)segments;
+                float angle = Mathf.Lerp(36, 114, fraction) * Mathf.Deg2Rad;
+                Vector2 end = new(64 + Mathf.Cos(angle) * 53, 64 + Mathf.Sin(angle) * 53);
+                if (index > 0) a.Stroke(start.x, start.y, end.x, end.y, Mathf.Lerp(5.4f, 1.2f, fraction), Paper);
+                start = end;
+            }
+        });
         public static Sprite ShopIcon => Get("shop-icon", a =>
         {
             Plate(a, 11, 22, 117, 91, 9, Paper);

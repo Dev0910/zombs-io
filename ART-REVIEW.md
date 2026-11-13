@@ -66,3 +66,34 @@ Desktop evidence is in `Builds/Verification/Art-Release`. `night-motion.mp4` con
 In the release player, keyboard and mouse input verified Enter to deploy, G to select the generator, clicking to place it, B to open the shop, selecting the Pets tab, adopting C.A.R.L., and Escape to close the shop and pause. The review did not measure recognition times with external players or certify display sizes beyond those tested.
 
 The 800 × 600 Windows run passed the same opening and review scenarios. It showed a clear boss entrance, completed the first boss night at normal speed with 100 boss tokens, and captured the dense fight, all five shop tabs, and both recovery screens. The Pets tab showed the disabled evolution action with its level and token requirements. See `Builds/Verification/Art-Release-Compact/playthrough.log`. All 12 Unity Edit Mode tests passed on the packaged revision.
+
+## Compact follow-up
+
+Internal visual review of the updated Windows development player at 800 × 600, seed 5238. The day gallery and normal-speed dense-wave fixture use the same camera and layout. Scores apply to the three reviewed areas.
+
+| Area | Score | Evidence |
+| --- | ---: | --- |
+| Title crop | 9.3 | The reactor core and operator remain visible beside the controls. The illustration still trims the outer platform. See `01-title.png`. |
+| Production machines | 9.0 | The paired flues, diagonal arm, and drill point distinguish the machines in both lighting states. The square chassis and small toolbar icons still limit silhouette separation. See `13b-structure-gallery.png` and `13d-dense-wave.png`. |
+| Terrain | 8.9 | The lower-contrast, 24-unit basalt tile avoids repeating the same broad pattern within the central view. Repeated detail sprites remain visible. See the same gallery and wave frames. |
+
+Captures are in `Builds/Verification/Remaining-Compact-Visible`. The dense-wave frame had 24 live enemies within 14.5 world units. Desktop-size comparison and external recognition testing remain open.
+
+## Gameplay feedback pass
+
+Keep feedback at the point of action. A pickaxe hit throws chips from the deposit, while the resource gain stays by the player. Give each active machine a visible moving part or vent and keep progress in the inspector. Keep explosion glow below the infected, and let generator light fall off inside the separate oxygen boundary.
+
+| Check | Result |
+| --- | --- |
+| Harvest and first wave at 800 × 600 | **Pass.** Swing, chips, tower recoil, and hit feedback are visible in the normal-speed sequences. The player and oxygen edge stay readable. |
+| Working machines and fuel recovery at 800 × 600 | **Pass.** The opening reached active smelting, assembly, and extraction. The capture shows progress in the inspector and breathable air after the generator restarts. |
+| Dense fight at 800 × 600 | **Pass.** In the 24-enemy fixture, the cyan pool gives the generator more presence and the threat markers and suit remain distinct. |
+| Dense fight at 1280 × 800 | **Pass.** The same fixture retains enemy markers and silhouette separation in the desktop composition. See `Builds/Verification/Lively-Desktop/13d-dense-wave.png`. |
+
+The captures and silent clips are in `Builds/Verification/Lively-Compact`. The normal-speed first-wave sample recorded a 7.0 ms 95th-percentile frame time without PNG capture and 34.7 ms during capture. The Windows per-app meter detected output in the desktop run and measured a peak of 0.22 full scale (about −13 dBFS) across the sampled interval. Audio mix and cue recognition by listeners remain open.
+
+## Weapon and building redraw
+
+The new sprites use graphite housings, pale tool edges, and small colored accents. The reactor uses a broad round core, the Smelter has two stacks and a furnace grille, the Assembler has a raised arm and roller bed, and the Miner has treads and an exposed bit. Turrets use round mounts and heads shaped around their firing action. The same sprites appear in the world and in the controls.
+
+The compact Windows review uses seed 5238 at 800 × 600. Compare `13b-structure-gallery.png`, `13d-dense-wave.png`, and `12-1-weapons.png` in `Builds/Verification/Hardware-Final` with the corresponding images in `Builds/Verification/Lively-Compact`. These cover the full structure lineup by day and during the crowded wave, and all four weapon icons at their normal shop size. Held spear and bomb recognition during combat and player preference remain unverified.
