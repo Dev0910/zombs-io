@@ -24,6 +24,15 @@ namespace Zombs
         private readonly Camera camera;
         private readonly Transform root;
         private readonly SpriteRenderer ground;
+        private readonly bool industrial;
+        internal bool UsesIndustrialArt => industrial;
+        private readonly Light daylight, reactorLight;
+        private readonly IndustrialMachines machines;
+        private readonly IndustrialActors actors;
+        private readonly IndustrialDeposits deposits;
+        private readonly IndustrialGround industrialGround;
+        private readonly UnityEngine.Rendering.AmbientMode previousAmbientMode;
+        private readonly Color previousAmbientLight;
         private readonly List<SpriteRenderer> parts = new();
         private readonly List<Burst> bursts = new(MaxBursts);
         private RunState run;
@@ -32,15 +41,44 @@ namespace Zombs
         private float swing, clock, stride, moving;
         private Color lighting;
 
-        public WorldView(Camera camera)
+        public WorldView(Camera camera, bool industrial)
         {
             this.camera = camera;
+            this.industrial = industrial;
             root = new GameObject("Outpost world").transform;
             ground = CreatePart("Basalt");
-            ground.sprite = SpriteArt.WorldTile;
+            if (!industrial) ground.sprite = SpriteArt.WorldTile;
             ground.drawMode = SpriteDrawMode.Tiled;
             ground.tileMode = SpriteTileMode.Continuous;
             ground.sortingOrder = -100;
+            if (industrial)
+            {
+                machines = new IndustrialMachines(root);
+                actors = new IndustrialActors(root);
+                deposits = new IndustrialDeposits(root);
+                industrialGround = new IndustrialGround(root);
+                camera.transform.rotation = Quaternion.Euler(-33, 0, 0);
+                previousAmbientMode = RenderSettings.ambientMode;
+                previousAmbientLight = RenderSettings.ambientLight;
+                RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                daylight = CreateLight("Outpost key light", LightType.Directional, new Color(.82f, .88f, 1));
+                daylight.transform.rotation = Quaternion.Euler(28, 31, 0);
+                daylight.shadows = LightShadows.Soft;
+                daylight.shadowStrength = .77f;
+                daylight.shadowNormalBias = .17f;
+                daylight.shadowBias = .035f;
+                reactorLight = CreateLight("Oxygen reactor light", LightType.Point, Air);
+                reactorLight.range = 6;
+            }
+        }
+
+        private Light CreateLight(string name, LightType type, Color color)
+        {
+            var light = new GameObject(name).AddComponent<Light>();
+            light.transform.SetParent(root, false);
+            light.type = type;
+            light.color = color;
+            return light;
         }
 
         public void Attach(RunState state)
@@ -50,12 +88,23 @@ namespace Zombs
             run.EffectOccurred += AddEffect;
             bursts.Clear();
             clock = swing = stride = moving = 0;
+            actors?.ResetOperatorAnimation();
             lastPlayer = run.Player;
+            camera.transform.position = (Vector3)run.Player - camera.transform.forward * 20;
         }
 
         public void Dispose()
         {
             if (run != null) run.EffectOccurred -= AddEffect;
+            machines?.Dispose();
+            actors?.Dispose();
+            deposits?.Dispose();
+            industrialGround?.Dispose();
+            if (industrial)
+            {
+                RenderSettings.ambientMode = previousAmbientMode;
+                RenderSettings.ambientLight = previousAmbientLight;
+            }
             if (root != null) Object.Destroy(root.gameObject);
         }
 
@@ -63,7 +112,10 @@ namespace Zombs
         {
             if (effect.Kind == EffectKind.Swing)
             {
-                swing = .22f;
+                if (actors != null)
+                    actors.StartOperatorAttack(run.Weapon, run.Catalog.Item(run.Weapon).interval);
+                else
+                    swing = .22f;
                 return;
             }
             if (effect.Kind is EffectKind.WaveStarted or EffectKind.BossStarted or EffectKind.Defeated) return;
@@ -88,40 +140,70 @@ namespace Zombs
 
         public void Draw(float dt, bool intro, BuildingKind? placing, int rotation, Structure selected, bool healing, Vector2 cursor)
         {
+            machines?.BeginFrame();
+            actors?.BeginFrame();
+            deposits?.BeginFrame();
             if (intro)
             {
                 HideParts(0);
                 ground.enabled = false;
+                if (industrial) daylight.enabled = reactorLight.enabled = false;
+                machines?.EndFrame();
+                actors?.EndFrame();
+                deposits?.EndFrame();
+                industrialGround?.Hide();
                 return;
             }
 
             used = 0;
             clock += dt;
-            float travel = Vector2.Distance(lastPlayer, run.Player);
-            stride += travel * 7;
-            moving = Mathf.MoveTowards(moving, travel > .001f ? 1 : 0, dt * 9);
+            Vector2 travel = run.Player - lastPlayer;
+            if (!industrial)
+            {
+                float distance = travel.magnitude;
+                stride += distance * 7;
+                moving = Mathf.MoveTowards(moving, distance > .001f ? 1 : 0, dt * 9);
+            }
             lastPlayer = run.Player;
             lighting = Color.Lerp(Color.white, NightObjects, run.LightBlend);
             Vector2 center = run.Player;
-            camera.transform.position = new Vector3(center.x, center.y, -20);
-            ground.enabled = true;
-            ground.transform.position = new Vector3(Mathf.Floor(center.x / 8) * 8, Mathf.Floor(center.y / 8) * 8, 0);
-            ground.color = Color.Lerp(DayGround, NightGround, run.LightBlend);
-            float width = camera.aspect * camera.orthographicSize, height = camera.orthographicSize;
-            ground.size = new Vector2(Mathf.Ceil((width + 8) / 8) * 16, Mathf.Ceil((height + 8) / 8) * 16);
-
-            DrawTerrain(center, width, height);
+            camera.transform.position = (Vector3)center - camera.transform.forward * 20;
+            if (industrial)
+            {
+                daylight.enabled = true;
+                daylight.intensity = Mathf.Lerp(1.18f, .91f, run.LightBlend);
+                RenderSettings.ambientLight = Color.Lerp(new Color(.39f, .43f, .48f), new Color(.19f, .22f, .27f), run.LightBlend);
+                reactorLight.enabled = run.GeneratorOnline;
+                reactorLight.intensity = Mathf.Lerp(.65f, 2.7f, run.LightBlend);
+                reactorLight.transform.position = (Vector3)run.OxygenCenter + Vector3.back * 1.1f;
+            }
+            float width = camera.aspect * camera.orthographicSize;
+            float height = camera.orthographicSize / camera.transform.forward.z;
+            if (industrial) industrialGround.Draw(center, width, height, run.LightBlend);
+            else
+            {
+                ground.enabled = true;
+                ground.transform.position = new Vector3(Mathf.Floor(center.x / 8) * 8, Mathf.Floor(center.y / 8) * 8, 0);
+                ground.color = Color.Lerp(DayGround, NightGround, run.LightBlend);
+                ground.size = new Vector2(Mathf.Ceil((width + 8) / 8) * 16, Mathf.Ceil((height + 8) / 8) * 16);
+                DrawTerrain(center, width, height);
+            }
             DrawCoverage(placing);
             if (run.GeneratorOnline)
             {
-                float strength = Mathf.Lerp(.11f, .46f, run.LightBlend);
-                Part(SpriteArt.Glow, run.OxygenCenter, Vector2.one * 13, 0, -58, WithAlpha(Air, strength));
+                float strength = industrial ? Mathf.Lerp(.06f, .14f, run.LightBlend) : Mathf.Lerp(.11f, .46f, run.LightBlend);
+                Part(SpriteArt.Glow, run.OxygenCenter, Vector2.one * (industrial ? 9 : 13), 0, -58, WithAlpha(Air, strength));
             }
             if (placing.HasValue) DrawPlacement(placing.Value, rotation, cursor);
 
             foreach (var node in run.Nodes)
             {
                 if (node.Depleted || !Visible(node.Position, center, width, height)) continue;
+                if (deposits != null)
+                {
+                    deposits.Draw(node);
+                    continue;
+                }
                 int seed = (int)(node.Position.x * 31 + node.Position.y * 83);
                 float size = node.Radius * 2.05f;
                 Part(SpriteArt.Shadow, node.Position + new Vector2(.19f, -.15f), new Vector2(size * 1.22f, size * 1.1f), 0, -3, new Color(1, 1, 1, .68f));
@@ -136,10 +218,15 @@ namespace Zombs
                 if (!Visible(building.Position, center, width, height)) continue;
                 float size = building.Data.size;
                 Part(SpriteArt.Shadow, building.Position + new Vector2(.10f, -.17f), new Vector2(size * 1.16f, size * .94f),
-                    0, 1, new Color(1, 1, 1, .78f));
-                DrawBuilding(building.Kind, building.Tier, building.Position, building.Angle, Color.white, 5,
-                    SpriteArt.IsTower(building.Kind) ? TowerRecoil(building) : 0);
-                DrawMachineState(building);
+                    0, 1, new Color(1, 1, 1, industrial ? .38f : .78f));
+                if (machines == null || !machines.Draw(building, run.GeneratorOnline, clock))
+                {
+                    DrawBuilding(building.Kind, building.Tier, building.Position, building.Angle, Color.white, 5,
+                        SpriteArt.IsTower(building.Kind) ? TowerRecoil(building) : 0);
+                    DrawMachineState(building);
+                }
+                else if (building.Kind == BuildingKind.Smelter && building.Queued > 0)
+                    DrawFurnaceExhaust(building.Position);
                 if (building.Health < building.MaximumHealth * .98f)
                     Bar(building.Position + Vector2.down * (size * .49f), size * .78f, .12f,
                         building.Health / building.MaximumHealth, Air, 14);
@@ -158,12 +245,13 @@ namespace Zombs
             if (!run.Dead && !run.Defeated)
             {
                 swing = Mathf.Max(0, swing - dt);
-                DrawOperator();
+                DrawOperator(dt, travel);
                 if (run.ActivePet.HasValue && run.PetHealth > 0)
                 {
                     float hover = Mathf.Sin(clock * 4 + run.PetPosition.x) * .047f;
                     Part(SpriteArt.Shadow, run.PetPosition + Vector2.down * .10f, new Vector2(1.14f, .74f), 0, 19, new Color(1, 1, 1, .65f));
-                    Part(SpriteArt.Item(run.ActivePet.Value), run.PetPosition + Vector2.up * hover, Vector2.one * 1.13f,
+                    if (actors != null) actors.DrawCompanion(run.ActivePet.Value, run.PetPosition, run.Aim, clock);
+                    else Part(SpriteArt.Item(run.ActivePet.Value), run.PetPosition + Vector2.up * hover, Vector2.one * 1.13f,
                         RunState.Angle(run.Aim), 23, Color.white);
                     if (run.PetHealth < run.PetMaxHealth)
                         Bar(run.PetPosition + Vector2.down * .59f, .87f, .095f, run.PetHealth / run.PetMaxHealth, Air, 24);
@@ -189,6 +277,9 @@ namespace Zombs
 
             DrawEffects(dt, center, width, height);
             HideParts(used);
+            machines?.EndFrame();
+            actors?.EndFrame();
+            deposits?.EndFrame();
         }
 
         private static bool Visible(Vector2 position, Vector2 center, float width, float height) =>
@@ -220,7 +311,8 @@ namespace Zombs
             {
                 if (placing == BuildingKind.Generator)
                     Part(SpriteArt.AirFill, run.OxygenCenter, Vector2.one * run.OxygenRadius * 2, 0, -60, new Color(Air.r, Air.g, Air.b, .042f));
-                else Zone(run.OxygenCenter, run.OxygenRadius, new Color(Air.r, Air.g, Air.b, .76f), run.Generator == null ? .055f : .075f, run.Generator == null, -60);
+                else Zone(run.OxygenCenter, run.OxygenRadius, new Color(Air.r, Air.g, Air.b, .76f),
+                    industrial && run.GeneratorOnline ? .022f : run.Generator == null ? .055f : .075f, run.Generator == null, -60);
             }
             else if (run.Generator != null)
                 Zone(run.Generator.Position, run.Generator.Data.Range(run.Generator.Tier), Amber, 0, true, -60);
@@ -256,12 +348,18 @@ namespace Zombs
             }
             else if (SpriteArt.IsTower(kind)) RangeCircle(point, run.Catalog.Building(kind).Range(1));
             Part(SpriteArt.Pixel, point, Vector2.one * size, 0, 32, new Color(accent.r, accent.g, accent.b, .22f));
-            DrawBuilding(kind, 1, point, rotation * 90, new Color(accent.r, accent.g, accent.b, .68f), 33);
+            if (machines != null)
+                machines.DrawPreview(kind, point, size, rotation * 90, WithAlpha(accent, valid ? .68f : .42f));
+            else
+                DrawBuilding(kind, 1, point, rotation * 90, WithAlpha(accent, .68f), 33);
             Corners(point, size, accent, 36);
             if (!valid)
             {
-                Part(SpriteArt.Pixel, point, new Vector2(size * .58f, .071f), 45, 37, Color.white);
-                Part(SpriteArt.Pixel, point, new Vector2(size * .58f, .071f), -45, 37, Color.white);
+                // Keep the X above an obstructing model while it stays centered on the snapped cell.
+                Vector3 marker = point;
+                if (industrial) marker -= camera.transform.forward * 3;
+                Part(SpriteArt.Pixel, marker, new Vector2(size * .58f, .071f), 45, 37, Color.white);
+                Part(SpriteArt.Pixel, marker, new Vector2(size * .58f, .071f), -45, 37, Color.white);
             }
         }
 
@@ -369,34 +467,59 @@ namespace Zombs
             }
         }
 
-        private void DrawOperator()
+        private void DrawFurnaceExhaust(Vector2 point)
+        {
+            for (int vent = 0; vent < 2; vent++)
+            {
+                float lift = Mathf.Repeat(clock * .86f + vent * .5f, 1);
+                Vector2 offset = new((vent == 0 ? -.34f : .34f) + lift * .24f, -.28f + lift * .56f);
+                Part(SpriteArt.Glow, point + offset, Vector2.one * Mathf.Lerp(.23f, .54f, lift), 0, 8,
+                    WithAlpha(new Color(.70f, .75f, .78f), .25f * (1 - lift)));
+                parts[used - 1].transform.position += Vector3.back * (.68f + lift * .39f);
+            }
+        }
+
+        private void DrawOperator(float dt, Vector2 travel)
         {
             Vector2 point = run.Player;
-            float angle = RunState.Angle(run.Aim), gait = Mathf.Sin(stride) * moving;
-            Vector2 right = new(run.Aim.y, -run.Aim.x);
+            float angle = RunState.Angle(run.Aim);
             Part(SpriteArt.Shadow, point + new Vector2(.12f, -.13f), new Vector2(1.64f, 1.24f), 0, 19, new Color(1, 1, 1, .76f));
-            for (int side = -1; side <= 1; side += 2)
-                Part(SpriteArt.Limb, point + right * (.27f * side) - run.Aim * (.40f + gait * .15f * side),
-                    new Vector2(.28f, .40f), angle, 24, Armor);
-            Part(SpriteArt.Suit, point, Vector2.one * (1.59f + Mathf.Abs(gait) * .026f), angle, 25, Color.white);
-            float swingProgress = swing > 0 ? Mathf.Sin(swing / .22f * Mathf.PI) : 0;
-            bool melee = run.Weapon is ItemKind.Pickaxe or ItemKind.Spear;
-            float arc = swingProgress * (melee ? 63 : 10);
-            Vector2 direction = RunState.Direction(angle + 20 - arc);
-            Vector2 toolPoint = point + direction * (.86f - (melee ? 0 : swingProgress * .11f)) + right * .16f;
-            if (melee && swingProgress > .05f)
-                Part(SpriteArt.SwingTrail, point + run.Aim * .13f, Vector2.one * 2.8f, angle + 18 - arc, 26,
-                    WithAlpha(Armor, swingProgress * .55f));
-            Part(SpriteArt.Item(run.Weapon, run.ItemTier(run.Weapon)), toolPoint,
-                Vector2.one * 1.04f, angle + 18 - arc, 27, Color.white);
-            if (run.WearingHat)
-                Part(SpriteArt.Hat, point + run.Aim * .19f, Vector2.one * .84f, angle, 28, Color.white);
+            if (actors != null)
+            {
+                float strike = actors.DrawOperator(run, clock, dt, travel);
+                if (run.Weapon == ItemKind.Pickaxe && strike > .05f)
+                    DrawSwingTrail(point, angle + 18 - strike * 63, strike);
+            }
+            else
+            {
+                float gait = Mathf.Sin(stride) * moving;
+                float swingProgress = swing > 0 ? Mathf.Sin(swing / .22f * Mathf.PI) : 0;
+                Vector2 right = new(run.Aim.y, -run.Aim.x);
+                for (int side = -1; side <= 1; side += 2)
+                    Part(SpriteArt.Limb, point + right * (.27f * side) - run.Aim * (.40f + gait * .15f * side),
+                        new Vector2(.28f, .40f), angle, 24, Armor);
+                Part(SpriteArt.Suit, point, Vector2.one * (1.59f + Mathf.Abs(gait) * .026f), angle, 25, Color.white);
+                bool melee = run.Weapon is ItemKind.Pickaxe or ItemKind.Spear;
+                float arc = swingProgress * (melee ? 63 : 10);
+                Vector2 direction = RunState.Direction(angle + 20 - arc);
+                Vector2 toolPoint = point + direction * (.86f - (melee ? 0 : swingProgress * .11f)) + right * .16f;
+                if (melee && swingProgress > .05f)
+                    DrawSwingTrail(point, angle + 18 - arc, swingProgress);
+                Part(SpriteArt.Item(run.Weapon, run.ItemTier(run.Weapon)), toolPoint,
+                    Vector2.one * 1.04f, angle + 18 - arc, 27, Color.white);
+                if (run.WearingHat)
+                    Part(SpriteArt.Hat, point + run.Aim * .19f, Vector2.one * .84f, angle, 28, Color.white);
+            }
             if (!run.CanBreathe || run.Protected)
             {
                 Color accent = run.Protected ? Air : run.Breath > 0 ? Amber : Coral;
                 Part(SpriteArt.Outline, point, Vector2.one * 1.76f, 0, 20, accent);
             }
         }
+
+        private void DrawSwingTrail(Vector2 point, float angle, float strength) =>
+            Part(SpriteArt.SwingTrail, point + run.Aim * .13f, Vector2.one * 2.8f, angle, 26,
+                WithAlpha(Armor, strength * .55f));
 
         private void DrawEnemy(Enemy enemy)
         {
@@ -407,14 +530,18 @@ namespace Zombs
             Vector2 point = enemy.Position;
             Color tint = Color.Lerp(Color.white, new Color(1, .64f, .54f), Mathf.Clamp01(enemy.Flash * 5));
             Part(SpriteArt.Shadow, point + new Vector2(.13f, -.13f), new Vector2(size * 1.18f, size * .86f), 0, 10, new Color(1, 1, 1, .55f));
-            for (int side = -1; side <= 1; side += 2)
-                Part(SpriteArt.Limb, point + right * (size * .23f * side) - forward * (size * (.29f + .09f * side * pace)),
-                    new Vector2(size * .25f, size * .36f), enemy.Angle + side * 12, 15, new Color(.56f, .50f, .44f));
-            int variant = enemy.Neutral ? 1 : (Mathf.RoundToInt(enemy.Color.r * 19) % 3);
-            float flinch = Mathf.Clamp01(enemy.Flash / .14f);
-            Vector2 body = point - forward * (size * .10f * flinch);
-            Part(SpriteArt.Infected(variant, enemy.Boss), body, new Vector2(size * (1 + flinch * .06f), size * (1 - flinch * .07f)),
-                enemy.Angle + pace * 5, 16, tint);
+            if (actors != null) actors.DrawEnemy(enemy, clock);
+            else
+            {
+                for (int side = -1; side <= 1; side += 2)
+                    Part(SpriteArt.Limb, point + right * (size * .23f * side) - forward * (size * (.29f + .09f * side * pace)),
+                        new Vector2(size * .25f, size * .36f), enemy.Angle + side * 12, 15, new Color(.56f, .50f, .44f));
+                int variant = enemy.Neutral ? 1 : (Mathf.RoundToInt(enemy.Color.r * 19) % 3);
+                float flinch = Mathf.Clamp01(enemy.Flash / .14f);
+                Vector2 body = point - forward * (size * .10f * flinch);
+                Part(SpriteArt.Infected(variant, enemy.Boss), body, new Vector2(size * (1 + flinch * .06f), size * (1 - flinch * .07f)),
+                    enemy.Angle + pace * 5, 16, tint);
+            }
             if (enemy.Boss)
             {
                 Part(SpriteArt.ThreatMarker, point + Vector2.up * (size * .72f), Vector2.one * .37f, 0, 19, Color.white);
@@ -533,7 +660,7 @@ namespace Zombs
             return gameObject.GetComponent<SpriteRenderer>();
         }
 
-        private void Part(Sprite sprite, Vector2 position, Vector2 scale, float angle, int order, Color color)
+        private void Part(Sprite sprite, Vector3 position, Vector2 scale, float angle, int order, Color color)
         {
             if (used == parts.Count) parts.Add(CreatePart("Sprite"));
             SpriteRenderer part = parts[used++];
@@ -541,7 +668,7 @@ namespace Zombs
             part.sprite = sprite;
             part.sortingOrder = order;
             part.color = color * lighting;
-            part.transform.SetPositionAndRotation(new Vector3(position.x, position.y, 0), Quaternion.Euler(0, 0, angle));
+            part.transform.SetPositionAndRotation(position, Quaternion.Euler(0, 0, angle));
             part.transform.localScale = new Vector3(scale.x, scale.y, 1);
         }
 

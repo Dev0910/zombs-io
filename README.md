@@ -1,6 +1,6 @@
 # Zombs.io Offline
 
-A single-player Unity 2D survival game. Gather and build during the day, then defend the Oxygen Generator against stronger zombie waves each night.
+A single-player Unity survival game. Gather and build during the day, then defend the Oxygen Generator against stronger zombie waves each night.
 
 ## Play on Windows
 
@@ -44,4 +44,6 @@ Open this folder in Unity **6000.4.9f1**, open [Survival.unity](Assets/Game/Surv
 
 Use **Zombs → Build Windows x64** to rebuild. Run the Edit Mode suite in Unity Test Runner. The development build accepts **-zombs-playthrough <output-folder>** to run the opening through two nights, an iron trip, production, the Miner unlock, and recovery from an empty tank. Add **-zombs-fast** for an accelerated check. **-zombs-first-boss** also runs a separate defense scenario with supplied build materials and returns to normal speed before the first boss.
 
-Add **-zombs-art-review** to capture title settings, valid and blocked placement, production, oxygen recovery, all shop tabs, every building type, a dense-wave fixture, and both loss screens. **-zombs-art-motion** also captures short normal-speed harvesting and combat sequences. The Sound setting controls both action cues and ambience.
+Add **-zombs-art-review** to capture title settings, valid and blocked placement, production, oxygen recovery, all shop tabs, every building type, a dense-wave fixture, and both loss screens. **-zombs-art-motion** also captures normal-speed harvesting, combat, and player animation sequences. The Sound setting controls both action cues and ambience.
+
+The Windows player opens with the industrial 3D view. Add **-zombs-classic-art** for the original overhead view.

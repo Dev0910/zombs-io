@@ -42,7 +42,7 @@ namespace Zombs
             profile = LocalProfile.Load();
             if (profile.fullscreen) Screen.fullScreenMode = FullScreenMode.FullScreenWindow;
             gameAudio = new GameAudio(gameObject);
-            world = new WorldView(sceneCamera);
+            world = new WorldView(sceneCamera, Array.IndexOf(Environment.GetCommandLineArgs(), "-zombs-classic-art") < 0);
             Attach(new RunState(catalog, 5238));
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
             InitializeVerification();
@@ -379,8 +379,13 @@ namespace Zombs
 
         private Vector2 ScreenToWorld(Vector2 screen)
         {
-            float cellsPerPixel = sceneCamera.orthographicSize * 2 / Screen.height;
-            return run.Player + new Vector2(screen.x - Screen.width * .5f, Screen.height * .5f - screen.y) * cellsPerPixel;
+            return GroundPoint(sceneCamera, new Vector2(screen.x, Screen.height - screen.y));
+        }
+
+        internal static Vector2 GroundPoint(Camera camera, Vector2 screen)
+        {
+            Ray ray = camera.ScreenPointToRay(screen);
+            return ray.GetPoint(-ray.origin.z / ray.direction.z);
         }
 
         private static float Axis(KeyCode low, KeyCode high, KeyCode otherLow, KeyCode otherHigh) =>

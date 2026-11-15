@@ -20,6 +20,32 @@ namespace Zombs
         [TearDown]
         public void TearDown() => UnityEngine.Object.DestroyImmediate(catalog);
 
+        [TestCase(0, 800, 600)]
+        [TestCase(-33, 800, 600)]
+        [TestCase(-33, 1280, 800)]
+        public void ScreenPickingRoundTripsGroundPoints(int tilt, int width, int height)
+        {
+            var gameObject = new GameObject("Ground picking test", typeof(Camera));
+            try
+            {
+                var camera = gameObject.GetComponent<Camera>();
+                camera.orthographic = true;
+                camera.orthographicSize = 11.2f;
+                camera.pixelRect = new Rect(0, 0, width, height);
+                camera.transform.rotation = Quaternion.Euler(tilt, 0, 0);
+                camera.transform.position = new Vector3(3, -4, 0) - camera.transform.forward * 20;
+                foreach (var point in new[] { new Vector2(3, -4), new Vector2(-6, 4), new Vector2(12, -11) })
+                {
+                    Vector2 picked = GameSession.GroundPoint(camera, camera.WorldToScreenPoint(point));
+                    Assert.That(Vector2.Distance(picked, point), Is.LessThan(.001f));
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(gameObject);
+            }
+        }
+
         [Test]
         public void FeedbackTracksSuccessfulActionsAndStateTransitions()
         {

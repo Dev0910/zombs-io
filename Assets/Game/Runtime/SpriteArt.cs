@@ -4,6 +4,8 @@ using UnityEngine;
 
 namespace Zombs
 {
+    internal enum HudIcon { Shop, Heal, Timeout, Settings, Wood, Stone, Iron, Coal, Plates, Parts, Tokens, Headgear }
+
     internal static class SpriteArt
     {
         private static readonly Dictionary<string, Sprite> Sprites = new();
@@ -51,6 +53,106 @@ namespace Zombs
                 sprite = Sprite.Create(texture, new Rect(0, 0, size, size), Vector2.one * .5f, size / 24f, 0, SpriteMeshType.FullRect);
                 Sprites.Add(key, sprite);
                 return sprite;
+            }
+        }
+
+        public const float IndustrialTileSpan = 32f;
+
+        public static Sprite IndustrialWorldTile
+        {
+            get
+            {
+                const string key = "industrial-basalt";
+                if (Sprites.TryGetValue(key, out var sprite)) return sprite;
+
+                const int size = 1024;
+                var relief = new float[size * size];
+                var strata = new float[size * size];
+                for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float u = x / (float)size, v = y / (float)size;
+                    int index = y * size + x;
+                    strata[index] = TileNoise(u, v, 7, 4.1f);
+                    relief[index] = TileNoise(u, v, 37, 14.3f) * .38f +
+                        TileNoise(u, v, 103, 5.6f) * .39f + TileNoise(u, v, 231, 28.7f) * .23f;
+                }
+
+                var fissures = BasaltFissures(size);
+                var pixels = new Color32[size * size];
+                for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    int index = y * size + x;
+                    float slope = relief[((y + 2) % size) * size + (x + size - 2) % size] - relief[index];
+                    uint hash = unchecked((uint)(x * 73856093 ^ y * 19349663));
+                    hash = unchecked((hash ^ (hash >> 16)) * 0x7feb352du);
+                    float grain = ((hash >> 24) / 255f - .5f) * 34;
+                    float grit = (relief[index] - .5f) * 95 + slope * 70 + grain;
+                    float shade = 62 + (strata[index] - .5f) * 49 + grit + fissures[index] * 1.18f;
+                    byte value = (byte)Mathf.Clamp(Mathf.RoundToInt(shade), 0, 239);
+                    pixels[index] = C(value, (byte)(value + 6), (byte)(value + 10));
+                }
+
+                var texture = new Texture2D(size, size, TextureFormat.RGBA32, true)
+                {
+                    name = key, wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Trilinear
+                };
+                texture.SetPixels32(pixels);
+                texture.Apply(true, true);
+                sprite = Sprite.Create(texture, new Rect(0, 0, size, size), Vector2.one * .5f,
+                    size / IndustrialTileSpan, 0, SpriteMeshType.FullRect);
+                Sprites.Add(key, sprite);
+                return sprite;
+            }
+        }
+
+        private static float[] BasaltFissures(int size)
+        {
+            var fissures = new float[size * size];
+            var random = new System.Random(40178);
+            for (int seam = 0; seam < 24; seam++)
+            {
+                Vector2 point = new(random.Next(size), random.Next(size));
+                float angle = (float)random.NextDouble() * Mathf.PI * 2;
+                int segments = random.Next(9, 21);
+                for (int segment = 0; segment < segments; segment++)
+                {
+                    angle += (float)(random.NextDouble() - .5) * 1.5f;
+                    Vector2 forward = new(Mathf.Cos(angle), Mathf.Sin(angle));
+                    Vector2 end = point + forward * random.Next(5, 20);
+                    float taper = Mathf.Sin(Mathf.PI * (segment + .5f) / segments);
+                    CutBasalt(fissures, size, point, end, .5f + taper * 1.1f);
+                    if (segment % 6 == 2)
+                    {
+                        Vector2 branch = new(-forward.y, forward.x);
+                        if (random.Next(2) == 0) branch = -branch;
+                        Vector2 elbow = point + (forward * .4f + branch) * random.Next(9, 19);
+                        CutBasalt(fissures, size, point, elbow, .75f);
+                        CutBasalt(fissures, size, elbow, elbow + (forward + branch * .5f) * random.Next(5, 12), .45f);
+                    }
+                    point = end;
+                }
+            }
+            return fissures;
+        }
+
+        private static void CutBasalt(float[] fissures, int size, Vector2 start, Vector2 end, float width)
+        {
+            Vector2 segment = end - start;
+            float lengthSquared = segment.sqrMagnitude;
+            for (int y = Mathf.FloorToInt(Mathf.Min(start.y, end.y)) - 4; y <= Mathf.CeilToInt(Mathf.Max(start.y, end.y)) + 4; y++)
+            for (int x = Mathf.FloorToInt(Mathf.Min(start.x, end.x)) - 4; x <= Mathf.CeilToInt(Mathf.Max(start.x, end.x)) + 4; x++)
+            {
+                Vector2 offset = new Vector2(x, y) - start;
+                float along = Mathf.Clamp01(Vector2.Dot(offset, segment) / lengthSquared);
+                Vector2 nearest = offset - segment * along;
+                float distance = nearest.magnitude;
+                float bevel = Mathf.Clamp01(1 - Mathf.Abs(distance - width - .7f)) * (nearest.y > 0 ? 13 : 0);
+                float groove = Mathf.Clamp01(1 - distance / (width + .65f)) * 16;
+                int index = (y & (size - 1)) * size + (x & (size - 1));
+                if (Mathf.Abs(bevel - groove) > Mathf.Abs(fissures[index]))
+                    fissures[index] = bevel - groove;
             }
         }
 
@@ -591,32 +693,111 @@ namespace Zombs
                 start = end;
             }
         });
-        public static Sprite ShopIcon => Get("shop-icon", a =>
+        public static Sprite Hud(HudIcon icon) => Get($"hud-{icon}", a =>
         {
-            Plate(a, 11, 22, 117, 91, 9, Paper);
-            Plate(a, 20, 32, 108, 81, 4, new Color32(0, 0, 0, 0));
-            a.Stroke(40, 91, 48, 107, 7, Paper);
-            a.Stroke(48, 107, 80, 107, 7, Paper);
-            a.Stroke(80, 107, 88, 91, 7, Paper);
-            a.Box(52, 52, 76, 60, 1, Paper);
-        });
-        public static Sprite GearIcon => Get("gear-icon", a =>
-        {
-            a.Annulus(64, 64, 41, 16, Paper);
-            foreach (int x in new[] { 29, 64, 99 })
-            foreach (int y in new[] { 29, 64, 99 })
-                if (x != 64 || y != 64) a.Box(x - 9, y - 9, x + 9, y + 9, 2, Paper);
-        });
-        public static Sprite ClockIcon => Get("clock-icon", a =>
-        {
-            a.Annulus(64, 64, 52, 9, Paper);
-            a.Stroke(64, 64, 64, 95, 8, Paper);
-            a.Stroke(64, 64, 86, 49, 8, Paper);
-        });
-        public static Sprite HealIcon => Get("heal-icon", a =>
-        {
-            a.Box(52, 15, 76, 113, 2, Paper);
-            a.Box(15, 52, 113, 76, 2, Paper);
+            switch (icon)
+            {
+                case HudIcon.Shop:
+                    Plate(a, 40, 79, 88, 118, 11, Edge);
+                    Plate(a, 49, 88, 79, 108, 5, Recess);
+                    Plate(a, 9, 14, 119, 96, 13, Ink);
+                    Plate(a, 14, 20, 114, 92, 10, C(65, 128, 128));
+                    Plate(a, 19, 31, 109, 89, 7, C(117, 192, 188));
+                    a.Box(19, 51, 109, 61, 2, C(44, 86, 92));
+                    Plate(a, 50, 43, 78, 69, 4, Cyan);
+                    a.Box(56, 50, 72, 58, 2, C(46, 91, 94));
+                    break;
+                case HudIcon.Heal:
+                    Plate(a, 42, 85, 86, 114, 7, Alloy);
+                    Plate(a, 50, 89, 78, 105, 3, Recess);
+                    Plate(a, 10, 13, 118, 98, 12, Ink);
+                    Plate(a, 15, 19, 113, 92, 8, C(142, 70, 74));
+                    Plate(a, 21, 30, 108, 91, 7, C(219, 136, 133));
+                    Plate(a, 26, 35, 103, 85, 6, C(167, 89, 95));
+                    a.Box(56, 38, 73, 81, 3, C(255, 228, 215));
+                    a.Box(43, 51, 86, 68, 3, C(255, 228, 215));
+                    break;
+                case HudIcon.Timeout:
+                    Plate(a, 48, 96, 80, 121, 5, Amber);
+                    a.Ring(64, 57, 52, 4, C(148, 97, 49));
+                    a.Disc(63, 61, 45, Amber);
+                    a.Disc(63, 61, 35, C(41, 34, 28));
+                    a.Stroke(63, 61, 63, 83, 9, C(255, 224, 163));
+                    a.Stroke(63, 61, 79, 48, 8, C(255, 224, 163));
+                    a.Disc(63, 61, 5, Paper);
+                    break;
+                case HudIcon.Settings:
+                    for (int i = 0; i < 8; i++)
+                    {
+                        float angle = i * Mathf.PI / 4;
+                        Vector2 ray = new(Mathf.Cos(angle), Mathf.Sin(angle));
+                        a.Stroke(64 + 37 * ray.x, 64 + 37 * ray.y, 64 + 50 * ray.x, 64 + 50 * ray.y, 17, Alloy);
+                        a.Stroke(64 + 39 * ray.x, 67 + 39 * ray.y, 64 + 50 * ray.x, 67 + 50 * ray.y, 13, Edge);
+                    }
+                    a.Disc(64, 62, 47, Alloy);
+                    a.Disc(63, 67, 44, C(176, 198, 204));
+                    a.Disc(64, 63, 29, C(94, 124, 138));
+                    a.Disc(64, 65, 22, Recess);
+                    break;
+                case HudIcon.Wood:
+                    a.Stroke(36, 51, 86, 88, 43, C(101, 70, 44));
+                    a.Stroke(39, 56, 88, 93, 31, C(155, 106, 62));
+                    a.Stroke(59, 34, 103, 67, 39, C(92, 64, 42));
+                    a.Stroke(63, 40, 102, 70, 29, C(160, 112, 60));
+                    a.Ring(31, 51, 23, 3, C(209, 161, 97));
+                    a.Disc(30, 51, 12, C(165, 110, 61));
+                    a.Ring(56, 34, 21, 3, C(231, 187, 117));
+                    a.Disc(55, 34, 10, C(174, 119, 66));
+                    break;
+                case HudIcon.Stone:
+                    a.Poly(C(82, 104, 123), 9, 35, 22, 73, 54, 105, 95, 97, 120, 53, 92, 28, 36, 21);
+                    a.Poly(C(175, 192, 202), 22, 73, 54, 105, 95, 97, 83, 62, 47, 55);
+                    a.Poly(C(123, 151, 168), 83, 62, 95, 97, 120, 53, 92, 28);
+                    a.Poly(C(102, 125, 139), 9, 35, 22, 73, 47, 55, 36, 21);
+                    break;
+                case HudIcon.Iron:
+                    a.Poly(C(137, 81, 53), 9, 31, 26, 67, 65, 79, 108, 64, 120, 31, 76, 18, 35, 20);
+                    a.Poly(C(219, 143, 76), 24, 45, 38, 91, 57, 106, 72, 89, 62, 49, 46, 35);
+                    a.Poly(C(255, 203, 122), 38, 91, 57, 106, 56, 63, 46, 35, 31, 48);
+                    a.Poly(C(236, 159, 94), 66, 37, 76, 71, 96, 86, 110, 64, 92, 32);
+                    break;
+                case HudIcon.Coal:
+                    a.Poly(C(66, 73, 87), 10, 44, 29, 84, 55, 91, 79, 67, 67, 35, 38, 24);
+                    a.Poly(C(128, 137, 153), 29, 84, 55, 91, 79, 67, 49, 62, 28, 51, 10, 44);
+                    a.Poly(C(44, 53, 65), 53, 31, 66, 64, 101, 79, 118, 51, 111, 30, 78, 21);
+                    a.Poly(C(94, 109, 127), 66, 64, 101, 79, 118, 51, 94, 44, 76, 50);
+                    break;
+                case HudIcon.Plates:
+                    for (int y = 26; y <= 54; y += 14)
+                    {
+                        a.Poly(C(74, 104, 126), 11, y, 69, y - 7, 117, y + 18, 117, y + 28, 11, y + 9);
+                        a.Poly(C(164, 200, 217), 11, y + 9, 69, y + 2, 117, y + 28, 58, y + 36);
+                    }
+                    break;
+                case HudIcon.Parts:
+                    Plate(a, 13, 22, 116, 106, 14, C(65, 99, 96));
+                    Plate(a, 18, 31, 111, 103, 9, C(115, 164, 143));
+                    for (int y = 42; y <= 88; y += 23)
+                    {
+                        a.Box(12, y, 34, y + 8, 2, Amber);
+                        a.Box(94, y, 117, y + 8, 2, Amber);
+                    }
+                    Plate(a, 38, 44, 90, 89, 7, Recess);
+                    Plate(a, 47, 52, 82, 82, 5, C(123, 151, 154));
+                    break;
+                case HudIcon.Tokens:
+                    a.Poly(C(108, 75, 157), 16, 35, 16, 84, 62, 111, 109, 87, 114, 39, 66, 10);
+                    a.Poly(Violet, 16, 45, 16, 86, 62, 113, 107, 91, 107, 48, 63, 22);
+                    a.Poly(C(79, 51, 118), 64, 98, 95, 83, 96, 57, 64, 37, 29, 54, 29, 80);
+                    a.Poly(C(234, 219, 255), 62, 91, 74, 75, 83, 69, 72, 64, 64, 49, 54, 64, 44, 70, 54, 77);
+                    break;
+                case HudIcon.Headgear:
+                    Plate(a, 13, 22, 115, 83, 19, C(193, 128, 66));
+                    a.Poly(C(242, 189, 111), 21, 64, 15, 103, 35, 87, 53, 77, 76, 77, 99, 94, 113, 106, 106, 62);
+                    Plate(a, 29, 35, 99, 65, 7, C(47, 69, 80));
+                    a.Stroke(40, 55, 88, 55, 6, C(120, 195, 191));
+                    break;
+            }
         });
         public static Sprite Whistle => Get("whistle", a =>
         {

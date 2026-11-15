@@ -1,5 +1,29 @@
 # Zombs.io Offline art and UI review
 
+## Chosen direction for the art experiment
+
+Use the [grounded industrial 3D concept](Art/References/grounded-industrial-3d.jpg) as the visual target. The image is a concept mockup. The implementation target is a high-angle view with visible machine depth, matte graphite and worn steel, fractured basalt, and cyan light spilling from the generator. Reserve amber for machine activity and keep the oxygen boundary distinct from the light spill.
+
+Prototype the generator, one turret, the suited operator, and nearby infected in the same night-fight layout. At 800 × 600 and 1280 × 800, check that machine height and shadows leave enemies, placement footprints, and the oxygen edge readable. Keep ground detail subdued under units. Use matched captures to decide how much camera tilt and surface detail to carry into the full asset set.
+
+### First playable prototype
+
+- [x] Record seed 5238 baselines at both sizes. See `Builds/Verification/Hardware-Final` and `Builds/Verification/Industrial-Baseline-Desktop`.
+- [x] Tilt the orthographic camera from overhead and project pointer input onto the original gameplay plane. The first prototype used a 28° tilt. The expanded pass uses a 33° tilt from the opposite side to show the fronts of the machines. Edit Mode round-trip coverage checks three camera and display combinations.
+- [x] Render the reactor, Arrow Tower, operator, and ordinary infected as 3D geometry. Add basalt, a directional key, cyan reactor spill, turret turn and recoil, and animated gait and swings. The reactor model and light respond to loss and restoration of fuel.
+- [x] Review daylight, blocked placement, power recovery, and the 24-enemy fight at both sizes. See `Builds/Verification/Industrial-Prototype-Compact` and `Builds/Verification/Industrial-Prototype-Desktop`. The brief first-wave samples measured 7.0 ms p95 at both sizes without PNG capture.
+- [ ] Review the visual direction before converting the remaining assets. The basalt still looks smoother than the concept at compact scale. The prototype mixes modeled objects with the existing sprites, and uses soft contact shadows.
+
+### Grounded industrial 3D pass
+
+The game opens in the industrial view. All 12 building types, all four deposits, the operator, infected, and companions have 3D world models. The terrain uses a lit ground mesh with loose basalt chips and directional cast shadows. The cyan spill stays localized and the oxygen boundary is drawn on the gameplay plane. Placement previews use translucent versions of the building models with a grid, range indicators, and a white X for blocked cells. The operator's articulated limbs animate at idle, while moving, and when using each tool.
+
+Use the dense-wave captures from `Builds/Verification/Industrial-Polish-Desktop` and `Builds/Verification/Industrial-Polish-Compact` to review the final pass against the chosen concept. The main remaining differences are the concept's finer surface wear, more detailed foliage and characters, and atmospheric haze at the edges.
+
+### 3D HUD artwork
+
+The build bar and inspector use transparent renders of the twelve gameplay building models. The loadout and Shop use renders of the held weapons and companions. The two potions and shield use dedicated 3D icon models. The command buttons have labeled illustrations, and the Materials panel shares its resource artwork with the Shop balances and prices. Rebuild the model renders with **Zombs → Bake Industrial Icons** after changing a model.
+
 ## Art direction
 
 The redesign depicts a containment outpost on a basalt mining site. The generator is the largest source of teal light. Armor and machinery use graphite, pale alloy, and restrained highlights. Amber marks heat, activity, and caution. Coral marks hostile or damaging states. A warning, structure, or deposit has a shape, label, or pattern that carries its meaning when color is hard to distinguish.

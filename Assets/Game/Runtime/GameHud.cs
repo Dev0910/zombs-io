@@ -21,6 +21,17 @@ namespace Zombs
         private static readonly Color AirBar = new(.17f, .64f, .59f);
         private static readonly Color Green = new(.14f, .37f, .39f);
         private static readonly string[] TabNames = { "Weapons", "Armor", "Hats", "Pets", "Utility" };
+        private static readonly ItemKind[] TabItems = { ItemKind.Pickaxe, ItemKind.Shield, ItemKind.Hat, ItemKind.Carl, ItemKind.HealthPotion };
+        private static readonly (HudIcon Icon, string Label, Func<Price, float> Amount)[] Materials =
+        {
+            (HudIcon.Wood, "Wood", stock => stock.wood),
+            (HudIcon.Stone, "Stone", stock => stock.stone),
+            (HudIcon.Iron, "Iron ore", stock => stock.iron),
+            (HudIcon.Coal, "Coal", stock => stock.coal),
+            (HudIcon.Plates, "Plates", stock => stock.plate),
+            (HudIcon.Parts, "Parts", stock => stock.parts),
+            (HudIcon.Tokens, "Boss tokens", stock => stock.tokens)
+        };
         private static readonly ItemKind[][] ShopItems =
         {
             new[] { ItemKind.Pickaxe, ItemKind.Spear, ItemKind.Bow, ItemKind.Bomb },
@@ -33,6 +44,8 @@ namespace Zombs
         private GUIStyle inputStyle;
         private Font font, headingFont;
         private Texture2D titleArt, titleFade;
+        private readonly Dictionary<BuildingKind, Texture2D> buildingIcons = new();
+        private readonly Dictionary<ItemKind, Texture2D> equipmentIcons = new();
 
         private float Scale => Mathf.Min(1.55f, Screen.height / 780f, Screen.width / 920f);
         private float Width => Screen.width / Scale;
@@ -41,7 +54,7 @@ namespace Zombs
         private Rect AirRect => new(20, 20, 236, 136);
         private Rect ClockRect => new(AirRect.x, AirRect.yMax + 7, AirRect.width, 53);
         private Rect GuidanceRect => new(AirRect.x, ClockRect.yMax + 7, AirRect.width, 46);
-        private Rect CommandRect => new(Width - 244, 20, 224, 86);
+        private Rect CommandRect => new(Width - 244, 20, 224, 97);
         private Rect MapRect => new(20, Height - 198, 172, 178);
         private Rect ResourcesRect => new(Width - 225, Height - 191, 205, 171);
         private float BuildSlotSize => Mathf.Min(48, (Width - 454) / BuildSlots - 4);
@@ -53,8 +66,8 @@ namespace Zombs
             get
             {
                 int rows = ShopItems[shopTab].Length;
-                float height = 178 + rows * 74 + (shopTab == 3 && run.ActivePet.HasValue ? 45 : 0);
-                return new Rect((Width - 720) * .5f, (Height - 480) * .5f, 720, height);
+                float height = 207 + rows * 74 + (shopTab == 3 && run.ActivePet.HasValue ? 45 : 0);
+                return new Rect((Width - 720) * .5f, (Height - 510) * .5f, 720, height);
             }
         }
         private Rect SettingsRect => new((Width - 454) * .5f, (Height - 371) * .5f, 454, 371);
@@ -282,23 +295,28 @@ namespace Zombs
             Rect rect = ResourcesRect;
             Card(rect, "MATERIALS", BrightGold);
             Price stock = run.Resources;
-            Resource(rect, 0, 0, "Wood", stock.wood, ResourceKind.Wood);
-            Resource(rect, 1, 0, "Stone", stock.stone, ResourceKind.Stone);
-            Resource(rect, 0, 1, "Iron ore", stock.iron, ResourceKind.Iron);
-            Resource(rect, 1, 1, "Coal", stock.coal, ResourceKind.Coal);
-            Resource(rect, 0, 2, "Plates", stock.plate);
-            Resource(rect, 1, 2, "Parts", stock.parts);
+            Fill(new Rect(rect.x + 101, rect.y + 37, 1, 84), Line);
+            for (int i = 0; i < Materials.Length - 1; i++)
+            {
+                var (icon, label, amount) = Materials[i];
+                int column = i % 2;
+                var cell = new Rect(rect.x + 9 + column * 94, rect.y + 32 + i / 2 * 32, 93, 28);
+                DrawHudIcon(new Rect(cell.x, cell.y + 3, 21, 21), icon);
+                Text(new Rect(cell.x + 23, cell.y, 43, 27), label, 13, MutedText);
+                string count = Number(amount(stock));
+                Text(new Rect(cell.x + 59, cell.y, column == 0 ? 28 : 34, 27), count, count.Length > 4 ? 12 : 16,
+                    TextColor, TextAnchor.MiddleRight, bold: true);
+            }
             Fill(Inset(rect, 10, 132, 1), Line);
-            Text(Inset(rect, 12, 136, 24), "Boss tokens", 14, MutedText);
+            DrawHudIcon(new Rect(rect.x + 10, rect.y + 137, 23, 23), HudIcon.Tokens);
+            Text(new Rect(rect.x + 36, rect.y + 136, 102, 24), "Boss tokens", 14, MutedText);
             Text(Inset(rect, 12, 136, 24), $"{stock.tokens:N0}", 17, Purple, TextAnchor.MiddleRight, bold: true);
         }
 
-        private void Resource(Rect box, int column, int row, string label, float amount, ResourceKind? kind = null)
+        private static void DrawHudIcon(Rect rect, HudIcon icon)
         {
-            Rect rect = new(box.x + 10 + column * 94, box.y + 32 + row * 32, 91, 28);
-            if (kind.HasValue) Icon(new Rect(rect.x, rect.y + 4, 18, 19), SpriteArt.MapDeposit(kind.Value), .65f, Color.white);
-            Text(new Rect(rect.x + (kind.HasValue ? 17 : 3), rect.y, 53, 27), label, 13, MutedText);
-            Text(new Rect(rect.x + 53, rect.y, 35, 27), Number(amount), 16, TextColor, TextAnchor.MiddleRight, bold: true);
+            if (Event.current.type == EventType.Repaint)
+                Icon(rect, SpriteArt.Hud(icon), 1, Color.white);
         }
 
         private void DrawMap()
@@ -359,24 +377,38 @@ namespace Zombs
             Frame(rect, Panel, Line);
             Text(new Rect(rect.x + 11, rect.y + 5, 105, 24), profile.nickname, 16, TextColor);
             Text(new Rect(rect.x + 116, rect.y + 5, 96, 24), $"{run.Score:N0} SCORE", 15, MutedText, TextAnchor.MiddleRight, true);
-            var store = new Rect(rect.x + 8, rect.y + 34, 51, 43);
-            var heal = new Rect(rect.x + 61, rect.y + 34, 49, 43);
-            var timeout = new Rect(rect.x + 113, rect.y + 34, 49, 43);
-            var gear = new Rect(rect.x + 165, rect.y + 34, 51, 43);
-            if (IconButton(store, SpriteArt.ShopIcon, Air, "B")) ToggleShop();
-            if (IconButton(heal, SpriteArt.HealIcon, healing ? Air : Coral))
+            var store = new Rect(rect.x + 8, rect.y + 34, 49, 55);
+            var heal = new Rect(rect.x + 61, rect.y + 34, 49, 55);
+            var timeout = new Rect(rect.x + 114, rect.y + 34, 49, 55);
+            var gear = new Rect(rect.x + 167, rect.y + 34, 49, 55);
+            if (CommandButton(store, HudIcon.Shop, "SHOP", key: "B")) ToggleShop();
+            if (CommandButton(heal, HudIcon.Heal, "HEAL", healing))
             {
                 ResetSelection();
                 if (run.Resources.Covers(catalog.healPrice)) healing = true;
                 else Notify($"Heal Towers needs {Format(catalog.healPrice)}.");
             }
-            if (IconButton(timeout, SpriteArt.ClockIcon, BrightGold) && !run.Cast(SpellKind.Timeout, run.Player))
+            if (CommandButton(timeout, HudIcon.Timeout, "TIMEOUT") && !run.Cast(SpellKind.Timeout, run.Player))
                 Notify($"Timeout needs {Format(catalog.timeoutPrice)} and a ready cooldown.");
-            if (IconButton(gear, SpriteArt.GearIcon, MutedText)) settings = true;
+            if (CommandButton(gear, HudIcon.Settings, "SETTINGS")) settings = true;
             if (settings || shop || run.Dead || run.Defeated) return;
             string tip = store.Contains(Mouse) ? "Shop [B]" : heal.Contains(Mouse) ? $"Heal Towers  /  {Format(catalog.healPrice)}" :
                 timeout.Contains(Mouse) ? $"Timeout  /  {Format(catalog.timeoutPrice)}" : gear.Contains(Mouse) ? "Settings [Esc]" : null;
             if (tip != null) Tooltip(new Rect(rect.xMax - 274, rect.yMax + 3, 274, 29), tip);
+        }
+
+        private bool CommandButton(Rect rect, HudIcon icon, string label, bool selectedTile = false, string key = "")
+        {
+            Tile(rect, selectedTile, true);
+            DrawHudIcon(new Rect(rect.x + (key.Length > 0 ? 6 : 9), rect.y + 3, 31, 31), icon);
+            Text(new Rect(rect.x, rect.y + 34, rect.width, 17), label, 13, TextColor, TextAnchor.MiddleCenter, bold: true);
+            if (key.Length > 0)
+            {
+                Rect cap = new(rect.xMax - 14, rect.y + 3, 12, 13);
+                Fill(cap, DeepPanel);
+                Text(cap, key, 11, MutedText, TextAnchor.MiddleCenter, bold: true);
+            }
+            return Hit(rect);
         }
 
         private void DrawToolbar()
@@ -394,7 +426,7 @@ namespace Zombs
                     int tier = run.ItemTier(kind);
                     bool active = tier > 0 && run.Weapon == kind;
                     Tile(rect, active, tier > 0);
-                    Icon(rect, SpriteArt.Item(kind, Mathf.Max(1, tier)), .78f, Tint(tier > 0));
+                    EquipmentIcon(rect, kind, tier, .86f, .78f, Tint(tier > 0));
                     if (tier > 0 && Hit(rect))
                     {
                         ResetSelection();
@@ -409,9 +441,10 @@ namespace Zombs
                 else
                 {
                     bool usable = index switch { 4 => run.CanHealPlayer, 5 => run.CanHealPet, _ => run.PetHealth > 0 };
-                    Sprite icon = index switch { 4 => SpriteArt.Item(ItemKind.HealthPotion), 5 => SpriteArt.Item(ItemKind.PetPotion), _ => SpriteArt.Whistle };
                     string key = index == 4 ? "F" : index == 6 ? "H" : "";
-                    if (IconButton(rect, icon, Tint(usable), key, usable))
+                    bool pressed = index == 6 ? IconButton(rect, SpriteArt.Whistle, Tint(usable), key, usable) :
+                        PotionButton(rect, index == 4 ? ItemKind.HealthPotion : ItemKind.PetPotion, Tint(usable), key, usable);
+                    if (pressed)
                     {
                         if (index == 6) run.Whistle();
                         else if (!(index == 4 ? run.HealPlayer() : run.HealPet())) Notify("Potion unavailable.");
@@ -446,8 +479,7 @@ namespace Zombs
                 bool active = placing == kind || kind == BuildingKind.Generator && selected != null && selected == run.Generator;
                 Tile(rect, active, online);
                 Rect glyph = new(rect.x + 2, rect.y, rect.width - 4, rect.height - 5);
-                Icon(glyph, SpriteArt.Base(kind, 1), data.size == 1 ? .66f : .82f, Tint(online));
-                if (SpriteArt.IsTower(kind)) Icon(glyph, SpriteArt.Turret(kind, 1), .84f, Tint(online));
+                BuildingIcon(glyph, kind, 1, .98f, data.size == 1 ? .66f : .82f, .84f, Tint(online));
                 string key = kind switch
                 {
                     BuildingKind.Generator => "G", BuildingKind.Assembler => "M", BuildingKind.Miner => "0",
@@ -533,7 +565,7 @@ namespace Zombs
             return null;
         }
 
-        private Rect StructureRect() => new(Width - 353, 137, 333, 324);
+        private Rect StructureRect() => new(Width - 353, CommandRect.yMax + 32, 333, 324);
 
         private void DrawStructure()
         {
@@ -547,8 +579,7 @@ namespace Zombs
             bool upgradeable = tier < building.Data.prices.Length;
             var art = new Rect(rect.x + 12, rect.y + 13, 48, 48);
             Tile(art, false, true);
-            Icon(art, SpriteArt.Base(building.Kind, tier), .86f, Color.white);
-            if (SpriteArt.IsTower(building.Kind)) Icon(art, SpriteArt.Turret(building.Kind, tier), .86f, Color.white);
+            BuildingIcon(art, building.Kind, tier, .94f, .86f, .86f, Color.white);
             Text(new Rect(rect.x + 71, rect.y + 9, 215, 29), building.Data.title.ToUpperInvariant(), 24, TextColor, bold: true);
             Text(new Rect(rect.x + 71, rect.y + 39, 210, 19), $"TIER {Roman[tier - 1]}   /   {MachineStatus(building)}", 14,
                 generator && !run.GeneratorOnline ? Coral : Air, bold: true);
@@ -665,42 +696,69 @@ namespace Zombs
             Dim();
             Rect rect = ShopRect;
             Frame(rect, Panel, Line);
-            Text(Inset(rect, 21, 12, 43), "EQUIPMENT SHOP", 35, TextColor, bold: true);
+            var headerIcon = new Rect(rect.x + 21, rect.y + 13, 36, 36);
+            Frame(headerIcon, DeepPanel, Line);
+            DrawHudIcon(Inset(headerIcon, 3, 3, 30), HudIcon.Shop);
+            Text(new Rect(rect.x + 67, rect.y + 9, rect.width - 139, 43), "EQUIPMENT SHOP", 32, TextColor, bold: true);
             Price stock = run.Resources;
-            string supplies = $"WOOD {Number(stock.wood)}   STONE {Number(stock.stone)}   COAL {Number(stock.coal)}   PLATES {Number(stock.plate)}   PARTS {Number(stock.parts)}";
-            Text(new Rect(rect.xMax - 403, rect.y + 21, 338, 27), supplies, 16, BrightGold, TextAnchor.MiddleRight, true);
-            if (Button(new Rect(rect.xMax - 52, rect.y + 17, 31, 31), "×", Slot, 20))
+            if (Button(new Rect(rect.xMax - 52, rect.y + 15, 31, 31), "×", Slot, 21))
             {
                 shop = false;
                 return;
             }
+            DrawShopStock(Inset(rect, 21, 59, 38), stock);
             float tabWidth = (rect.width - 46) / TabNames.Length;
             for (int i = 0; i < TabNames.Length; i++)
             {
-                Rect tab = new(rect.x + 21 + i * tabWidth, rect.y + 67, tabWidth - 3, 36);
-                if (Button(tab, TabNames[i].ToUpperInvariant(), shopTab == i ? Green : Slot, 17)) shopTab = i;
-                if (shopTab == i) Fill(new Rect(tab.x, tab.yMax - 2, tab.width, 2), Air);
+                Rect tab = new(rect.x + 21 + i * tabWidth, rect.y + 106, tabWidth - 3, 39);
+                bool current = shopTab == i;
+                Tile(tab, current, true);
+                Rect tabIcon = new(tab.x + 11, tab.y + 4, 32, 31);
+                if (TabItems[i] == ItemKind.Hat) DrawHudIcon(tabIcon, HudIcon.Headgear);
+                else EquipmentIcon(tabIcon, TabItems[i], 1, .98f, .84f, Color.white);
+                Text(new Rect(tab.x + 50, tab.y, tab.width - 54, tab.height), TabNames[i].ToUpperInvariant(), 16,
+                    current ? TextColor : MutedText, bold: true);
+                if (current) Fill(new Rect(tab.x, tab.yMax - 2, tab.width, 2), Air);
+                if (Hit(tab)) shopTab = i;
             }
             int index = 0;
+            string priceHint = null;
             foreach (ItemKind kind in ShopItems[shopTab])
-                DrawShopItem(new Rect(rect.x + 21, rect.y + 115 + index++ * 74, rect.width - 42, 66), kind);
+                priceHint = DrawShopItem(new Rect(rect.x + 21, rect.y + 155 + index++ * 74, rect.width - 42, 66), kind) ?? priceHint;
             if (shopTab == 3 && run.ActivePet.HasValue)
             {
                 string evolve = run.PetEvolution >= 3 ? "Maximum evolution" : run.PetHealth <= 0 ? "Companion unavailable" :
                     run.CanEvolvePet ? $"Evolve  /  {run.PetEvolutionPrice} tokens" :
                     $"Requires level {run.PetEvolutionLevel}  /  {run.PetEvolutionPrice} tokens";
-                if (Button(new Rect(rect.x + 21, rect.y + 275, 238, 34), evolve, Slot, 16, run.CanEvolvePet)) run.EvolvePet();
-                if (Button(new Rect(rect.x + 269, rect.y + 275, 133, 34), "Call companion", Slot, 17, run.PetHealth > 0)) run.Whistle();
+                if (Button(new Rect(rect.x + 21, rect.y + 306, 238, 34), evolve, Slot, 16, run.CanEvolvePet)) run.EvolvePet();
+                if (Button(new Rect(rect.x + 269, rect.y + 306, 133, 34), "Call companion", Slot, 17, run.PetHealth > 0)) run.Whistle();
             }
             Fill(Inset(rect, 21, rect.height - 55, 1), Line);
             string footer = notice != null && Time.unscaledTime < noticeUntil ? notice : null;
+            if (footer == null) footer = priceHint;
             if (footer == null && run.Generator != null)
                 footer = $"{(run.Night ? "Night" : "Daylight")}  /  {TimeLeft(run.PhaseLength - run.PhaseTime)}   •   " +
                     (run.GeneratorOnline ? $"Fuel {TimeLeft(run.Generator.Fuel)}" : "Generator offline");
-            Text(Inset(rect, 21, rect.height - 49, 30), footer, 15, run.GeneratorOnline ? MutedText : Coral);
+            Text(Inset(rect, 21, rect.height - 49, 30), footer, 15, priceHint != null ? BrightGold : run.GeneratorOnline ? MutedText : Coral);
         }
 
-        private void DrawShopItem(Rect row, ItemKind kind)
+        private void DrawShopStock(Rect rect, Price stock)
+        {
+            Frame(rect, DeepPanel, Line);
+            float width = rect.width / Materials.Length;
+            for (int i = 0; i < Materials.Length; i++)
+            {
+                var (icon, label, amount) = Materials[i];
+                float x = rect.x + i * width;
+                if (i > 0) Fill(new Rect(x, rect.y + 7, 1, rect.height - 14), Line);
+                DrawHudIcon(new Rect(x + 8, rect.y + 7, 24, 24), icon);
+                Text(new Rect(x + 39, rect.y + 3, width - 44, 15), icon == HudIcon.Tokens ? "Tokens" : label, 12, MutedText);
+                Text(new Rect(x + 39, rect.y + 18, width - 44, 17), Number(amount(stock)), 17,
+                    icon == HudIcon.Tokens ? Purple : TextColor, bold: true);
+            }
+        }
+
+        private string DrawShopItem(Rect row, ItemKind kind)
         {
             ItemData item = catalog.Item(kind);
             int tier = run.ItemTier(kind);
@@ -713,23 +771,54 @@ namespace Zombs
             bool enough = pet || hat && tier > 0 || run.Resources.Covers(price);
             bool potionReady = !consumable || (kind == ItemKind.HealthPotion ? run.CanHealPlayer : run.CanHealPet);
             bool available = !maxed && !active && enough && potionReady;
-            Frame(row, Slot, Line);
-            Rect artwork = new(row.x + 8, row.y + 7, 50, 52);
-            Fill(artwork, DeepPanel);
-            Icon(artwork, SpriteArt.Item(kind, Mathf.Max(1, tier)), .83f, Color.white);
-            Text(new Rect(row.x + 67, row.y + 7, 148, 25), item.title, 21, TextColor, bold: true);
+            Frame(row, Slot, active ? Green : Line);
+            Rect artwork = new(row.x + 7, row.y + 5, 63, 56);
+            Frame(artwork, DeepPanel, Line);
+            if (hat) DrawHudIcon(Inset(artwork, 6, 4, 48), HudIcon.Headgear);
+            else EquipmentIcon(artwork, kind, tier, 1, .89f, Color.white);
+            Text(new Rect(row.x + 80, row.y + 7, 129, 25), item.title, 21, TextColor, bold: true);
             string tierLabel = active ? $"Level {run.PetLevel}   /   {run.PetExperience % 50}/50 XP" :
                 pet || consumable || hat ? "" : maxed ? "Maximum tier" : $"Tier {tier + 1}";
-            Text(new Rect(row.x + 67, row.y + 35, 143, 23), tierLabel, 14, MutedText);
-            Text(new Rect(row.x + 218, row.y + 4, row.width - 365, 36), item.description, 14, MutedText, wrap: true);
-            Text(new Rect(row.x + 218, row.y + 41, row.width - 365, 20), ShopStats(item, tier), 13, TextColor);
+            Text(new Rect(row.x + 80, row.y + 35, 129, 23), tierLabel, 14, MutedText);
+            Text(new Rect(row.x + 216, row.y + 4, row.width - 377, 36), item.description, 14, MutedText, wrap: true);
+            Text(new Rect(row.x + 216, row.y + 41, row.width - 377, 20), ShopStats(item, tier), 13, TextColor);
             string action = maxed ? "MAX TIER" : active ? "ACTIVE" : !enough ? "NEED MATERIALS" : !potionReady ? PotionStatus(kind).ToUpperInvariant() :
                 pet ? "ADOPT" : consumable ? "USE" :
                 hat && tier > 0 ? run.WearingHat ? "UNEQUIP" : "EQUIP" : tier > 0 ? "UPGRADE" : "BUY";
-            if (Button(new Rect(row.xMax - 137, row.y + 8, 125, 29), action, Green, 16, available) && !run.Buy(kind))
+            Rect actionRect = new(row.xMax - 152, row.y + 7, 141, 29);
+            if (Button(actionRect, action, Green, 16, available) && !run.Buy(kind))
                 Notify("This item is unavailable right now.");
-            if (!pet && !maxed && !(hat && tier > 0))
-                Text(new Rect(row.xMax - 144, row.y + 39, 136, 22), Format(price), 13, BrightGold, TextAnchor.MiddleCenter);
+            if (pet || maxed || hat && tier > 0) return null;
+            Rect costRect = new(actionRect.x, row.y + 39, actionRect.width, 21);
+            DrawShopCost(costRect, price);
+            return GUI.enabled && (actionRect.Contains(Mouse) || costRect.Contains(Mouse)) ? $"{item.title}  /  {Format(price)}" : null;
+        }
+
+        private void DrawShopCost(Rect rect, Price price)
+        {
+            if (Event.current.type != EventType.Repaint) return;
+            int entries = 0;
+            foreach (var material in Materials)
+                if (material.Amount(price) > 0) entries++;
+            if (entries == 0 || entries > 3)
+            {
+                Text(rect, Format(price), 12, BrightGold, TextAnchor.MiddleCenter, wrap: true);
+                return;
+            }
+
+            float width = Mathf.Min(53, rect.width / entries);
+            float x = rect.center.x - entries * width * .5f;
+            foreach (var (icon, _, amount) in Materials)
+            {
+                float needed = amount(price);
+                if (needed <= 0) continue;
+                Frame(new Rect(x, rect.y, width - 3, rect.height), DeepPanel, Line);
+                DrawHudIcon(new Rect(x + 3, rect.y + 2, 17, 17), icon);
+                string count = needed >= 1000 ? Number(needed) : needed.ToString("0.##");
+                Text(new Rect(x + 21, rect.y, width - 23, rect.height), count, count.Length > 4 ? 11 : 13,
+                    amount(run.Resources) + .0001f >= needed ? TextColor : Coral, TextAnchor.MiddleCenter, bold: true);
+                x += width;
+            }
         }
 
         private string PotionStatus(ItemKind kind)
@@ -893,6 +982,45 @@ namespace Zombs
             return enabled && Hit(rect);
         }
 
+        private bool PotionButton(Rect rect, ItemKind kind, Color tint, string key, bool enabled)
+        {
+            Tile(rect, false, enabled);
+            EquipmentIcon(rect, kind, 1, .72f, .53f, tint);
+            if (key.Length > 0) Key(rect, key, MutedText);
+            return enabled && Hit(rect);
+        }
+
+        private void BuildingIcon(Rect rect, BuildingKind kind, int tier, float scale, float baseScale, float turretScale, Color tint)
+        {
+            if (Event.current.type != EventType.Repaint) return;
+            if (IndustrialIcon(buildingIcons, kind, "building") is Texture2D texture)
+            {
+                DrawIcon(rect, texture, scale, tint);
+                return;
+            }
+            Icon(rect, SpriteArt.Base(kind, tier), baseScale, tint);
+            if (SpriteArt.IsTower(kind)) Icon(rect, SpriteArt.Turret(kind, tier), turretScale, tint);
+        }
+
+        private void EquipmentIcon(Rect rect, ItemKind kind, int tier, float scale, float spriteScale, Color tint)
+        {
+            if (Event.current.type != EventType.Repaint) return;
+            if (IndustrialIcon(equipmentIcons, kind, "item") is Texture2D texture)
+                DrawIcon(rect, texture, scale, tint);
+            else Icon(rect, SpriteArt.Item(kind, Mathf.Max(1, tier)), spriteScale, tint);
+        }
+
+        private Texture2D IndustrialIcon<T>(Dictionary<T, Texture2D> icons, T kind, string family)
+        {
+            if (!world.UsesIndustrialArt) return null;
+            if (!icons.TryGetValue(kind, out Texture2D icon))
+            {
+                icon = Resources.Load<Texture2D>($"Presentation/IndustrialIcons/{family}-{kind}");
+                icons.Add(kind, icon);
+            }
+            return icon;
+        }
+
         private void Tile(Rect rect, bool selectedTile, bool enabled) =>
             Frame(rect, selectedTile ? Green : enabled ? Slot : DeepPanel,
                 selectedTile ? Air : GUI.enabled && rect.Contains(Mouse) ? Quiet : Line);
@@ -922,8 +1050,13 @@ namespace Zombs
         private static void Icon(Rect rect, Sprite sprite, float scale, Color tint)
         {
             if (Event.current.type != EventType.Repaint) return;
+            DrawIcon(rect, sprite.texture, scale, tint);
+        }
+
+        private static void DrawIcon(Rect rect, Texture2D texture, float scale, Color tint)
+        {
             float size = Mathf.Min(rect.width, rect.height) * scale;
-            GUI.DrawTexture(new Rect(rect.center - Vector2.one * size * .5f, Vector2.one * size), sprite.texture,
+            GUI.DrawTexture(new Rect(rect.center - Vector2.one * size * .5f, Vector2.one * size), texture,
                 ScaleMode.ScaleToFit, true, 0, tint, 0, 0);
         }
 

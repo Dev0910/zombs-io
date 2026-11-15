@@ -12,14 +12,15 @@ namespace Zombs
         private enum Checkpoint
         {
             Title, TitleSettings, BlockedPreview, Preview, Wood, ToStone, Stone, Build, FirstNight, ToIron, Iron, Return,
-            Smelt, Assemble, Upgrade, Miner, SecondNight, Outage, Refill, BossDefense, ReviewPanels, ReviewStructures, ReviewCrowd, ReviewLoss, Finished
+            Smelt, Assemble, Upgrade, Miner, SecondNight, Outage, Refill, BossDefense, ReviewPanels, ReviewStructures,
+            ReviewCrowd, ReviewLoss, OperatorMotion, Finished
         }
 
         private sealed class Verification
         {
             public string Directory;
             public float Speed, BaseSpeed, StageAge, ServiceClock, CaptureClock;
-            public int MotionFrames, HarvestFrames;
+            public int MotionFrames, HarvestFrames, OperatorFrames;
             public float HarvestCaptureClock;
             public readonly List<float> FrameTimes = new();
             public readonly List<float> CapturingFrameTimes = new();
@@ -34,6 +35,7 @@ namespace Zombs
         private static readonly Vector2[] DefenseSites = { new(-5, 2), new(-1, 2), new(-3, -2), new(-5, -2) };
         private static readonly Vector2[] OreRoute = { new(1, 1.15f), new(7, 2), new(9, -4), new(12, -7) };
         private static readonly Vector2[] HomeRoute = { new(9, -4), new(7, 2), new(1, 1.15f), Vector2.zero };
+        private static readonly ItemKind[] OperatorTools = { ItemKind.Pickaxe, ItemKind.Spear, ItemKind.Bow, ItemKind.Bomb };
 
         private void InitializeVerification()
         {
@@ -49,6 +51,7 @@ namespace Zombs
             {
                 Directory.CreateDirectory(Path.Combine(output, "motion"));
                 Directory.CreateDirectory(Path.Combine(output, "harvest-motion"));
+                Directory.CreateDirectory(Path.Combine(output, "operator-motion"));
             }
             verification = new Verification
             {
@@ -343,6 +346,9 @@ namespace Zombs
                 case Checkpoint.ReviewLoss:
                     if (CheckArtLoss()) return true;
                     break;
+                case Checkpoint.OperatorMotion:
+                    RecordOperatorMotion(frame);
+                    return true;
                 case Checkpoint.Finished:
                     if (verification.StageAge > 1) Application.Quit();
                     return true;
@@ -526,7 +532,12 @@ namespace Zombs
             {
                 if (!CaptureAfterDelay(.38f, "15-generator-destroyed")) return true;
                 RestartAfterLoss();
-                FinishVerification(!run.Defeated && !run.Dead, "Reviewed title and pause settings, all shop tabs, all structures, companions, both loss screens, and restart.");
+                if (run.Defeated || run.Dead)
+                    FinishVerification(false, "Could not restart after generator loss.");
+                else if (verification.ArtMotion)
+                    StartOperatorMotion();
+                else
+                    FinishVerification(true, "Reviewed title and pause settings, all shop tabs, all structures, companions, both loss screens, and restart.");
                 return true;
             }
 
@@ -537,6 +548,47 @@ namespace Zombs
             verification.Captured = false;
             run.Generator.Health = 1;
             return true;
+        }
+
+        private void StartOperatorMotion()
+        {
+            Attach(new RunState(catalog, 5238, new Price(wood: 50, stone: 50, coal: 10)));
+            if (!run.Place(BuildingKind.Generator, Site, 0, out _) ||
+                !run.Buy(ItemKind.Spear) || !run.Buy(ItemKind.Bow) || !run.Buy(ItemKind.Bomb))
+            {
+                FinishVerification(false, "Could not equip the operator for the animation capture.");
+                return;
+            }
+            verification.Speed = 1;
+            verification.CaptureClock = 0;
+            AdvanceVerification(Checkpoint.OperatorMotion, "Capturing the operator moving, stopping, and using each equipped tool at normal speed.");
+        }
+
+        private void RecordOperatorMotion(float frame)
+        {
+            const float walkSeconds = 2.7f, toolSeconds = 1.4f, captureInterval = 1f / 20;
+            float age = verification.StageAge;
+            float toolTime = age - walkSeconds;
+            int index = Mathf.Max(0, Mathf.FloorToInt(toolTime / toolSeconds));
+            if (index >= OperatorTools.Length)
+            {
+                FinishVerification(true, "Completed the art review and captured operator movement and all four tools.");
+                return;
+            }
+
+            run.Equip(OperatorTools[index]);
+            Vector2 move = age is > .45f and < 1.15f ? Vector2.up
+                : age is > 1.25f and < 1.80f ? Vector2.down
+                : age is > 1.85f and < 2.20f ? Vector2.left : Vector2.zero;
+            cursor = run.Player + new Vector2(1.2f, -2.5f);
+            bool attack = toolTime >= 0 && toolTime % toolSeconds is > .25f and < 1;
+            StepGame(frame, move, attack);
+            verification.CaptureClock += frame;
+            if (verification.CaptureClock >= captureInterval)
+            {
+                verification.CaptureClock -= captureInterval;
+                SaveVerificationFrame($"operator-motion/frame-{verification.OperatorFrames++:D3}");
+            }
         }
 
         private bool GuideTo(Vector2 target, float elapsed, out Vector2 move)
